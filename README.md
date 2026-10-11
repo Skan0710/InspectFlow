@@ -1,6 +1,6 @@
 # InsightFlow 🚀
 
-> Intelligent observability and analytics platform scaffolded for the **Build Battle 2026** hackathon.
+> Intelligent B2B Customer Intelligence and Feedback Analytics Platform scaffolded for the **Build Battle 2026** hackathon.
 
 ## Architecture & Tech Stack
 
@@ -8,22 +8,30 @@
 InsightFlow/
 ├── client/                     # Frontend Application
 │   ├── src/
-│   │   ├── components/         # Reusable UI components (Navbar, Footer, etc.)
-│   │   ├── pages/              # Routed pages (Home, Status)
+│   │   ├── components/
+│   │   │   ├── layout/         # AppLayout, Collapsible Sidebar, TopNavbar
+│   │   │   └── ui/             # Reusable Design System (Button, Card, Badge, Input, Select, Textarea)
+│   │   ├── pages/              # Overview, Feedback, Insights, Actions, Reports, Settings
 │   │   ├── types/              # TypeScript types & API interfaces
-│   │   ├── App.tsx             # Main routing & application layout
+│   │   ├── App.tsx             # React Router routing & application shell
 │   │   ├── index.css           # Tailwind CSS imports & base theme styles
 │   │   └── main.tsx            # React application entry point
 │   ├── .env.example            # Frontend environment variable template
 │   ├── package.json            # React 19, Vite, Tailwind CSS, Lucide, Recharts, Framer Motion
-│   ├── tsconfig.json           # TypeScript app & compiler configuration
 │   └── vite.config.ts          # Vite plugin configuration & /api development proxy
 │
 ├── server/                     # Backend API Server
 │   ├── src/
-│   │   └── index.ts            # Express server, CORS, error handling, /api/health
+│   │   ├── db/
+│   │   │   ├── migrations/     # PostgreSQL SQL schema migrations
+│   │   │   │   └── 001_initial_schema.sql
+│   │   │   ├── client.ts       # Reusable Supabase & Postgres pool client with pagination
+│   │   │   ├── config.ts       # Database configuration parser & missing-variable checks
+│   │   │   ├── health.ts       # Database health-check service
+│   │   │   └── migrate.ts      # Migration execution runner
+│   │   └── index.ts            # Express server, health check endpoints, error handling
 │   ├── .env.example            # Backend environment variable template
-│   ├── package.json            # Node.js, Express, TypeScript, tsx, CORS, dotenv
+│   ├── package.json            # Node.js, Express, TypeScript, tsx, Supabase, pg, CORS, dotenv
 │   └── tsconfig.json           # NodeNext ESM TypeScript configuration
 │
 ├── .env.example                # Global environment variable documentation
@@ -31,100 +39,79 @@ InsightFlow/
 └── package.json                # Root orchestration scripts with concurrently
 ```
 
-### Frontend (`client/`)
-- **Framework**: React 19 + TypeScript + Vite
-- **Styling**: Tailwind CSS
-- **Routing**: React Router DOM (`react-router-dom`)
-- **Icons**: Lucide React (`lucide-react`)
-- **Charts & Telemetry**: Recharts (`recharts`)
-- **Motion & Transitions**: Framer Motion (`framer-motion`)
-
-### Backend (`server/`)
-- **Runtime**: Node.js + Express
-- **Language**: TypeScript (`NodeNext` ESM)
-- **Dev Server**: `tsx watch` (fast zero-config TypeScript execution with hot reload)
-- **Middleware**: `cors`, `dotenv`, JSON and URL-encoded body parsers
+### Backend Database Architecture (Supabase PostgreSQL)
+- **Database Client**: Reusable `@supabase/supabase-js` client + `pg` connection pool with lazy initialization.
+- **Graceful Unconfigured Mode**: Server boots cleanly even if database credentials are not present in `.env`. Database-dependent endpoints report structured `503 Service Unavailable` with missing variables instead of crashing or serving fake data.
+- **Efficient Pagination**: `parsePaginationParams` with `LIMIT`/`OFFSET` and keyset support prevents loading unbounded rows into memory.
+- **Separate Raw & AI Layers**: Raw customer feedback (`feedback`) is stored in an immutable table, completely decoupled from AI-generated sentiment and clustering analyses (`feedback_analysis`).
 
 ---
 
-## Getting Started
+## Database Schema (`001_initial_schema.sql`)
 
-### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node v24)
-- **npm**: v9+ (tested on npm v11)
+| Table | Description | Key Constraints & Indexes |
+| :--- | :--- | :--- |
+| `dataset_versions` | Immutable customer feedback version snapshots | Unique `version_tag`, timestamp indexing |
+| `analysis_runs` | Tracks batch & streaming AI clustering jobs | Status checks (`pending`, `running`, `completed`), duration, token tracking |
+| `feedback` | Raw ingested customer verbatim signals | Deduplication unique `(source, external_id)`, GIN index on `metadata` |
+| `feedback_analysis` | AI sentiment, urgency scores, and topics | Foreign key to `feedback(id)` ON DELETE CASCADE, unique `(feedback_id, model_version)` |
+| `issues` | Actionable initiatives & triage tickets | Unique `issue_code`, status/priority compound index |
+| `issue_feedback` | Junction table connecting issues to feedback citations | Unique composite `(issue_id, feedback_id)` |
+| `reports` | Executive briefings & digests | Unique `report_code`, type/status index, JSONB payload |
 
-### 2. Installation
-To install dependencies for root, client, and server at once:
-```bash
-npm run install:all
-```
+---
 
-Or install individually:
-```bash
-npm install
-npm install --prefix client
-npm install --prefix server
-```
+## Environment Variables
 
-### 3. Environment Variables
-Copy the `.env.example` templates in both `client/` and `server/`:
+Copy `.env.example` templates to `.env`:
 
 ```bash
-# Server environment variables
+# Server configuration
 cp server/.env.example server/.env
 
-# Client environment variables
+# Client configuration
 cp client/.env.example client/.env
 ```
 
-Default configuration:
-- `server/.env`:
-  ```env
-  PORT=5000
-  NODE_ENV=development
-  CLIENT_URL=http://localhost:5173
-  ```
-- `client/.env`:
-  ```env
-  VITE_API_URL=http://localhost:5000/api
-  ```
+### Required Variables Reference
 
-### 4. Running the Development Servers
+```env
+# HTTP Server (server/.env)
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:5173
 
-Run both the frontend and backend concurrently with a single command from the project root:
-```bash
-npm run dev
-```
+# Supabase API (server/.env) - Option A
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-secret-key
+SUPABASE_ANON_KEY=your-supabase-anon-public-key
 
-- **Frontend**: Accessible at [http://localhost:5173](http://localhost:5173)
-- **Backend**: Accessible at [http://localhost:5000](http://localhost:5000)
-- **Health Check Endpoint**: [http://localhost:5000/api/health](http://localhost:5000/api/health) (or proxied via frontend at [http://localhost:5173/api/health](http://localhost:5173/api/health))
+# Direct PostgreSQL Pooler (server/.env) - Option B (Required for migrations)
+DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-ID].supabase.co:5432/postgres
 
-### 5. Running Individually
-
-```bash
-# Run only backend
-npm run dev:server
-
-# Run only frontend
-npm run dev:client
-```
-
-### 6. Production Builds
-
-```bash
-# Build both client and server
-npm run build
-
-# Build individual workspaces
-npm run build:client
-npm run build:server
+# Client (client/.env)
+VITE_API_URL=http://localhost:5000/api
 ```
 
 ---
 
-## Endpoints
+## Running the Project
+
+```bash
+# Install dependencies across all workspaces
+npm run install:all
+
+# Run both frontend & backend concurrently
+npm run dev
+
+# Run PostgreSQL migrations (requires DATABASE_URL in server/.env)
+npm run db:migrate
+```
+
+### API Endpoints
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/health` | Returns server health status, uptime, timestamp, and environment |
+| `GET` | `/api/health` | Returns server health status, uptime, environment, and DB configuration state |
+| `GET` | `/api/health/db` | Dedicated database health check. Returns `200` with latency if connected, `503` if unconfigured or unreachable |
+| `GET` | `/api/feedback` | Paginated feedback query (`?page=1&pageSize=25`). Returns `503` if database is unconfigured |
