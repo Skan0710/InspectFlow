@@ -412,7 +412,7 @@ export class IssueClusteringService {
       title,
       description,
       category: predominantCategory,
-      status: 'backlog',
+      status: 'open',
       priority,
       impactSummary,
       feedbackCount,
@@ -421,6 +421,19 @@ export class IssueClusteringService {
       sentimentBreakdown,
       avgConfidence,
       memberFeedbackIds,
+      isSaved: false,
+      statusUpdatedAt: now,
+      notes: [],
+      statusHistory: [
+        {
+          id: `hist-init-${clusterId.slice(0, 8)}`,
+          fromStatus: 'none',
+          toStatus: 'open',
+          changedAt: now,
+          changedBy: 'ai_clustering',
+          reason: 'Initial issue cluster discovery',
+        },
+      ],
       metadata: {
         salientPhrases,
         predominantCategory,

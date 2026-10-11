@@ -12,6 +12,7 @@ import clusterRoutes from './routes/clusters.js';
 import scoringRoutes from './routes/scoring.js';
 import analyticsRoutes from './routes/analytics.js';
 import recommendationRoutes from './routes/recommendations.js';
+import issueRoutes from './routes/issues.js';
 
 dotenv.config();
 
@@ -126,6 +127,9 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Evidence-Backed AI Recommendations Routes
 app.use('/api/recommendations', recommendationRoutes);
+
+// Action Center & Persistent Issue Tracking Routes
+app.use('/api/issues', issueRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

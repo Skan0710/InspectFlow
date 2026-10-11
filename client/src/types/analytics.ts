@@ -108,6 +108,13 @@ export interface AnalyticsMetricsResponse {
   priorityRankings: {
     issues: PriorityRankingMetric[];
     tierSummary: PriorityTierSummary;
+    openIssuesCount?: number;
+    statusSummary?: {
+      open: number;
+      in_progress: number;
+      resolved: number;
+      dismissed: number;
+    };
     hasScoredIssues: boolean;
     disclaimer: string;
   };

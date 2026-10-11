@@ -234,6 +234,13 @@ export class AnalyticsService {
       );
     }
 
+    const statusSummary = {
+      open: 0,
+      in_progress: 0,
+      resolved: 0,
+      dismissed: 0,
+    };
+
     const tierSummary: PriorityTierSummary = {
       critical: 0,
       high: 0,
@@ -241,11 +248,27 @@ export class AnalyticsService {
       low: 0,
     };
 
-    const priorityRankings: PriorityRankingMetric[] = issuesList.map((issue) => {
-      const tier = (issue.priority || 'medium').toLowerCase() as keyof PriorityTierSummary;
-      if (tier in tierSummary) {
-        tierSummary[tier]++;
+    for (const issue of issuesList) {
+      const st = (issue.status || 'open').toLowerCase();
+      if (st === 'open' || st === 'backlog') statusSummary.open++;
+      else if (st === 'in_progress' || st === 'in_review') statusSummary.in_progress++;
+      else if (st === 'resolved' || st === 'completed') statusSummary.resolved++;
+      else if (st === 'dismissed' || st === 'cancelled') statusSummary.dismissed++;
+      else statusSummary.open++;
+
+      // Only open & in_progress issues contribute to the active open triage tiers
+      const isOpen = st !== 'resolved' && st !== 'completed' && st !== 'dismissed' && st !== 'cancelled';
+      if (isOpen) {
+        const tier = (issue.priority || 'medium').toLowerCase() as keyof PriorityTierSummary;
+        if (tier in tierSummary) {
+          tierSummary[tier]++;
+        }
       }
+    }
+
+    const openIssuesCount = statusSummary.open + statusSummary.in_progress;
+
+    const priorityRankings: PriorityRankingMetric[] = issuesList.map((issue) => {
       const rawScore = issue.metadata?.priorityScore;
       const score = typeof rawScore === 'number' ? rawScore : Number(rawScore) || 0;
       return {
@@ -260,6 +283,9 @@ export class AnalyticsService {
         duplicateRatio: issue.feedbackCount > 0
           ? Number((((issue.feedbackCount - issue.uniqueTextCount) / issue.feedbackCount) * 100).toFixed(2))
           : 0,
+        status: issue.status || 'open',
+        assignee: issue.assignee,
+        isSaved: Boolean(issue.isSaved),
       };
     }).sort((a, b) => b.priorityScore - a.priorityScore);
 
@@ -320,6 +346,8 @@ export class AnalyticsService {
       priorityRankings: {
         issues: priorityRankings,
         tierSummary,
+        openIssuesCount,
+        statusSummary,
         hasScoredIssues: priorityRankings.length > 0,
         disclaimer: 'Priority scores are deterministic heuristics calculated for triage ranking and do not represent validated financial or legal risk.',
       },

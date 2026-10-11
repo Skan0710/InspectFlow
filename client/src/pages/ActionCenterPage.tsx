@@ -1,89 +1,167 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, 
-  Sparkles, 
-  RotateCw, 
-  Calendar,
-  Building2,
-  Cpu,
-  ShieldCheck,
-  Users,
-  BarChart2,
-  FileText,
+import {
+  RotateCw,
+  Search,
+  Star,
+  User,
+  Clock,
+  Sparkles,
+  Layers,
+  CheckCircle2,
+  AlertCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { IssueDetailModal } from '../components/issues/IssueDetailModal';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
+import type { ActionIssue, IssueStatus, StatusSummary } from '../types/issues';
 import type { IssueRecommendation } from '../types/recommendations';
 
-interface DynamicActionItem {
-  id: string;
-  actionIndex: number;
-  title: string;
-  description: string;
-  expectedImpact: string;
-  priority: 'danger' | 'warning' | 'indigo' | 'neutral';
-  priorityLabel: string;
-  status: 'Backlog' | 'In Progress' | 'In Review' | 'Completed';
-  assignee: string;
-  dueDate: string;
-  linkedFeedbackCount: number;
-  timeframe: string;
-  recommendation: IssueRecommendation;
-}
-
 export const ActionCenterPage: React.FC = () => {
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [recommendations, setRecommendations] = useState<IssueRecommendation[]>([]);
+  const [issues, setIssues] = useState<ActionIssue[]>([]);
+  const [statusSummary, setStatusSummary] = useState<StatusSummary>({
+    open: 0,
+    in_progress: 0,
+    resolved: 0,
+    dismissed: 0,
+    saved: 0,
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [selectedRecommendation, setSelectedRecommendation] = useState<IssueRecommendation | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchRecommendations = useCallback(async () => {
+  // Filter & Search state
+  const [statusFilter, setStatusFilter] = useState<string>('open');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'priorityScore' | 'feedbackCount' | 'statusUpdatedAt' | 'createdAt'>('priorityScore');
+
+  // Modals state
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<IssueRecommendation | null>(null);
+
+  // Status update confirmation state
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ issueId: string; status: IssueStatus } | null>(null);
+  const [statusConfirmationNote, setStatusConfirmationNote] = useState<string>('');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false);
+
+  // Quick assignee editing state
+  const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
+  const [assigneeText, setAssigneeText] = useState<string>('');
+
+  const fetchIssues = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/recommendations');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.recommendations)) {
-          setRecommendations(data.recommendations);
-        }
+      const params = new URLSearchParams();
+      if (statusFilter === 'saved') {
+        params.append('savedOnly', 'true');
+      } else if (statusFilter !== 'all') {
+        params.append('status', statusFilter);
       }
-    } catch (err) {
-      console.error('Failed to load recommendations in Action Center:', err);
+      if (priorityFilter !== 'all') params.append('priority', priorityFilter);
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      params.append('sortBy', sortBy);
+      params.append('sortOrder', 'desc');
+
+      const res = await fetch(`/api/issues?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(`Failed to load issues: ${res.statusText}`);
+      }
+      const data = await res.json();
+      if (data.success) {
+        setIssues(data.issues || []);
+        if (data.statusSummary) {
+          setStatusSummary(data.statusSummary);
+        }
+      } else {
+        throw new Error(data.message || 'Error loading issues.');
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch issues:', err);
+      setError(err.message || 'Failed to connect to issues service.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [statusFilter, priorityFilter, searchQuery, sortBy]);
 
   useEffect(() => {
-    fetchRecommendations();
-  }, [fetchRecommendations]);
+    fetchIssues();
+  }, [fetchIssues]);
 
-  const handleGenerateAll = async () => {
-    setIsGenerating(true);
-    try {
-      const res = await fetch('/api/recommendations/generate-all', {
-        method: 'POST',
-      });
-      if (res.ok) {
-        await fetchRecommendations();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Failed to generate recommendations.');
-      }
-    } catch (err: any) {
-      console.error('Failed to trigger generation:', err);
-      alert(err.message || 'Error occurred while generating recommendations.');
-    } finally {
-      setIsGenerating(false);
+  const handleStatusChangeClick = (issue: ActionIssue, newStatus: IssueStatus) => {
+    if (issue.status === newStatus) return;
+    if (newStatus === 'resolved' || newStatus === 'dismissed') {
+      setPendingStatusChange({ issueId: issue.id, status: newStatus });
+      setStatusConfirmationNote('');
+    } else {
+      executeStatusChange(issue.id, newStatus);
     }
   };
 
-  const getPriorityVariant = (tier: string): 'danger' | 'warning' | 'indigo' | 'neutral' => {
-    switch (tier.toLowerCase()) {
+  const executeStatusChange = async (issueId: string, newStatus: IssueStatus, note?: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      const res = await fetch(`/api/issues/${issueId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          note: note || undefined,
+          changedBy: 'Current User',
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to update status.');
+      }
+
+      setPendingStatusChange(null);
+      await fetchIssues();
+    } catch (err: any) {
+      alert(err.message || 'Error occurred while updating issue status.');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleToggleSaved = async (issueId: string) => {
+    try {
+      const res = await fetch(`/api/issues/${issueId}/save`, {
+        method: 'PATCH',
+      });
+      if (res.ok) {
+        await fetchIssues();
+      }
+    } catch (err) {
+      console.error('Failed to toggle save state:', err);
+    }
+  };
+
+  const handleSaveAssignee = async (issueId: string) => {
+    try {
+      const res = await fetch(`/api/issues/${issueId}/assignee`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignee: assigneeText.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        setEditingAssigneeId(null);
+        await fetchIssues();
+      }
+    } catch (err) {
+      console.error('Failed to update assignee:', err);
+    }
+  };
+
+  const getPriorityBadgeVariant = (priority: string): 'danger' | 'warning' | 'indigo' | 'neutral' => {
+    switch (priority.toLowerCase()) {
       case 'critical':
         return 'danger';
       case 'high':
@@ -95,91 +173,54 @@ export const ActionCenterPage: React.FC = () => {
     }
   };
 
-  // Build dynamic list of action items from real recommendations
-  const actionItems: DynamicActionItem[] = recommendations.flatMap((rec) => {
-    return rec.recommendedActions.map((action, idx) => ({
-      id: `${rec.issueCode}-ACT-${idx + 1}`,
-      actionIndex: idx,
-      title: action.title,
-      description: action.description,
-      expectedImpact: action.expectedImpact,
-      priority: getPriorityVariant(rec.measuredFacts.priorityTier),
-      priorityLabel: `${rec.measuredFacts.priorityTier.toUpperCase()} (${rec.measuredFacts.priorityScore} pts)`,
-      status: (idx === 0 ? 'In Progress' : idx === 1 ? 'In Review' : 'Backlog') as any,
-      assignee: action.suggestedOwnerTeam,
-      dueDate: action.timeframe === 'immediate' ? 'Next Sprint' : action.timeframe === 'short_term' ? '30 Days' : 'Quarterly',
-      linkedFeedbackCount: rec.measuredFacts.totalFrequency,
-      timeframe: action.timeframe,
-      recommendation: rec,
-    }));
-  });
-
-  const filteredItems = filterStatus === 'all'
-    ? actionItems
-    : actionItems.filter((a) => a.status.toLowerCase().replace(/\s+/g, '') === filterStatus);
-
-  const getTeamIcon = (team: string) => {
-    switch (team) {
-      case 'Engineering':
-        return <Cpu className="h-3.5 w-3.5" />;
-      case 'Trust & Safety':
-        return <ShieldCheck className="h-3.5 w-3.5" />;
-      case 'Customer Support':
-        return <Users className="h-3.5 w-3.5" />;
-      default:
-        return <BarChart2 className="h-3.5 w-3.5" />;
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Action Center & Initiatives
+            Action Center & Issue Tracking
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Turn customer feedback into structured engineering and product initiatives with traceable citations.
+            Prioritized queue of customer friction topics with persistent status management, internal notes, and owners.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
-            leftIcon={<Sparkles className={`h-4 w-4 text-indigo-600 ${isGenerating ? 'animate-spin' : ''}`} />}
-            onClick={handleGenerateAll}
-            disabled={isGenerating}
+            leftIcon={<RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />}
+            onClick={fetchIssues}
+            disabled={isLoading}
           >
-            {isGenerating ? 'Generating Initiatives...' : 'Synthesize from High Priority'}
-          </Button>
-          <Button variant="primary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-            Create Action Item
+            Refresh Queue
           </Button>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+      {/* Filter Tabs & Status Overview */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
         {[
-          { label: 'All Items', value: 'all', count: actionItems.length },
-          { label: 'In Progress', value: 'inprogress', count: actionItems.filter((a) => a.status === 'In Progress').length },
-          { label: 'In Review', value: 'inreview', count: actionItems.filter((a) => a.status === 'In Review').length },
-          { label: 'Backlog', value: 'backlog', count: actionItems.filter((a) => a.status === 'Backlog').length },
+          { label: 'Open Issues', value: 'open', count: statusSummary.open },
+          { label: 'In Progress', value: 'in_progress', count: statusSummary.in_progress },
+          { label: 'Resolved', value: 'resolved', count: statusSummary.resolved },
+          { label: 'Dismissed', value: 'dismissed', count: statusSummary.dismissed },
+          { label: 'Saved / Bookmarked', value: 'saved', count: statusSummary.saved },
+          { label: 'All Issues', value: 'all', count: statusSummary.open + statusSummary.in_progress + statusSummary.resolved + statusSummary.dismissed },
         ].map((tab) => (
           <button
             key={tab.value}
-            onClick={() => setFilterStatus(tab.value)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-              filterStatus === tab.value
-                ? 'bg-indigo-600 text-white shadow-xs'
+            onClick={() => setStatusFilter(tab.value)}
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              statusFilter === tab.value
+                ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span>{tab.label}</span>
             <span
               className={`rounded-full px-1.5 py-0.2 text-[10px] ${
-                filterStatus === tab.value
+                statusFilter === tab.value
                   ? 'bg-white/20 text-white'
                   : 'bg-slate-200 text-slate-600'
               }`}
@@ -190,109 +231,326 @@ export const ActionCenterPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Action Item Cards */}
-      {isLoading ? (
-        <div className="py-16 text-center">
-          <RotateCw className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
-          <p className="text-sm font-medium text-slate-600 mt-3">Loading action initiatives...</p>
+      {/* Control Bar: Search & Priority Filter */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="w-full sm:w-72">
+          <Input
+            type="text"
+            placeholder="Search by issue title, code, or owner..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<Search className="h-4 w-4 text-slate-400" />}
+          />
         </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center bg-slate-50/50">
-          <Sparkles className="h-10 w-10 text-indigo-500 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-900">No Action Initiatives Found</h3>
-          <p className="text-xs text-slate-600 max-w-md mx-auto mt-1 mb-4">
-            Generate evidence-backed recommendations from your high-priority issue clusters to populate engineering and product work streams.
-          </p>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Sparkles className="h-4 w-4" />}
-            onClick={handleGenerateAll}
-            disabled={isGenerating}
-          >
-            {isGenerating ? 'Synthesizing...' : 'Generate Recommendations from Issues'}
+
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <div className="w-36">
+            <Select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
+              <option value="all">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+          </div>
+          <div className="w-44">
+            <Select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+            >
+              <option value="priorityScore">Highest Priority Score</option>
+              <option value="feedbackCount">Highest Mentions</option>
+              <option value="statusUpdatedAt">Recently Updated</option>
+              <option value="createdAt">Newest Discovered</option>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchIssues}>
+            Retry
           </Button>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {filteredItems.map((action) => (
-            <Card key={action.id} className="flex flex-col justify-between hover:border-slate-300 transition-colors">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={action.priority} size="sm">
-                        {action.priorityLabel}
-                      </Badge>
-                      <span className="font-mono text-xs text-slate-400">{action.id}</span>
-                      <span className="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
-                        {action.recommendation.issueCode}
-                      </span>
-                    </div>
-                    <CardTitle className="text-base font-semibold text-slate-900">{action.title}</CardTitle>
-                  </div>
-                </div>
-
-                <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  {action.description}
-                </p>
-
-                {action.expectedImpact && (
-                  <div className="mt-2 rounded-md bg-slate-50 border border-slate-200 p-2 text-xs text-slate-700">
-                    <span className="font-semibold text-slate-800">Target Outcome: </span>
-                    <span>{action.expectedImpact}</span>
-                  </div>
-                )}
-              </CardHeader>
-
-              <CardContent className="pt-2 pb-4">
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                  <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                    {getTeamIcon(action.assignee)}
-                    <span>{action.assignee}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Timeframe: <strong>{action.timeframe.replace('_', ' ')}</strong> ({action.dueDate})</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-indigo-600 font-medium">
-                    <Building2 className="h-3.5 w-3.5" />
-                    <span>{action.linkedFeedbackCount} customer citations</span>
-                  </div>
-                </div>
-              </CardContent>
-
-              <CardFooter className="py-3 bg-slate-50/70 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] uppercase font-bold text-slate-400">Status:</span>
-                  <Badge variant="neutral" size="sm">
-                    {action.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
-                    leftIcon={<FileText className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      setSelectedRecommendation(action.recommendation);
-                      setIsModalOpen(true);
-                    }}
-                  >
-                    Inspect Evidence & Facts
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
-          ))}
         </div>
       )}
 
-      {/* Shared Evidence-Backed Recommendation Modal */}
+      {/* Issues Queue List */}
+      {isLoading ? (
+        <div className="py-20 text-center">
+          <RotateCw className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
+          <p className="text-sm font-medium text-slate-600 mt-3">Loading prioritized issues queue...</p>
+        </div>
+      ) : issues.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center bg-slate-50/50">
+          <Layers className="h-10 w-10 text-indigo-500 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-900">No Issues Match Current Filters</h3>
+          <p className="text-xs text-slate-600 max-w-md mx-auto mt-1">
+            {statusFilter === 'resolved'
+              ? 'No resolved issues found. Triage active items to track resolutions.'
+              : statusFilter === 'saved'
+              ? 'No saved issues. Click the bookmark star on any issue to save it here.'
+              : 'All issues in this view have been triaged or no matching clusters were found.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {issues.map((issue) => {
+            const priorityScore = typeof issue.metadata?.priorityScore === 'number'
+              ? issue.metadata.priorityScore
+              : Number(issue.metadata?.priorityScore) || 0;
+            const duplicateRatio = issue.metadata?.duplicateRatio !== undefined
+              ? issue.metadata.duplicateRatio
+              : issue.feedbackCount > 0
+              ? (issue.feedbackCount - issue.uniqueTextCount) / issue.feedbackCount
+              : 0;
+
+            const negativeSentimentRatio = issue.feedbackCount > 0
+              ? issue.sentimentBreakdown.negative / issue.feedbackCount
+              : 0;
+
+            const isSaved = Boolean(issue.isSaved);
+            const recommendation = issue.metadata?.recommendation;
+
+            return (
+              <Card key={issue.id} className="transition-all hover:border-slate-300">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-3">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={getPriorityBadgeVariant(issue.priority)} size="sm" dot>
+                        {issue.priority.toUpperCase()}
+                      </Badge>
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {priorityScore} / 100 pts
+                      </span>
+                      <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                        {issue.issueCode}
+                      </span>
+                      <Badge variant="neutral" size="sm">
+                        {issue.category}
+                      </Badge>
+                      <button
+                        onClick={() => handleToggleSaved(issue.id)}
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                          isSaved
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                        title={isSaved ? 'Remove from saved' : 'Save / Bookmark issue'}
+                      >
+                        <Star className={`h-3 w-3 ${isSaved ? 'fill-amber-500 text-amber-600' : 'text-slate-400'}`} />
+                        <span>{isSaved ? 'Saved' : 'Save'}</span>
+                      </button>
+                    </div>
+
+                    <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                      {issue.title}
+                    </CardTitle>
+                    <p className="text-xs text-slate-600 line-clamp-2">
+                      {issue.description}
+                    </p>
+                  </div>
+
+                  {/* Frequency & Sentiment Metrics */}
+                  <div className="flex sm:flex-col items-end gap-1.5 shrink-0 text-right">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+                      <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                      <span>{issue.feedbackCount} mentions</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      {issue.uniqueTextCount} unique inquiries ({Math.round(duplicateRatio * 100)}% dupes)
+                    </div>
+                    <div className="text-[11px] font-semibold text-rose-600">
+                      {Math.round(negativeSentimentRatio * 100)}% negative sentiment
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-0 pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100">
+                    {/* Status Switcher Buttons */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold uppercase text-slate-400">Status:</span>
+                      {(['open', 'in_progress', 'resolved', 'dismissed'] as IssueStatus[]).map((st) => {
+                        const isActive = (issue.status || 'open').toLowerCase() === st;
+                        return (
+                          <button
+                            key={st}
+                            onClick={() => handleStatusChangeClick(issue, st)}
+                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                              isActive
+                                ? 'bg-slate-900 text-white font-bold'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {st === 'open' && 'Open'}
+                            {st === 'in_progress' && 'In Progress'}
+                            {st === 'resolved' && 'Resolved'}
+                            {st === 'dismissed' && 'Dismissed'}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Owner / Assignee pill */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-bold uppercase text-slate-400">Owner:</span>
+                      {editingAssigneeId === issue.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={assigneeText}
+                            onChange={(e) => setAssigneeText(e.target.value)}
+                            className="h-6 text-xs px-1.5 rounded border border-slate-300"
+                            placeholder="Name or team..."
+                            autoFocus
+                          />
+                          <Button size="sm" variant="primary" className="h-6 px-1.5 text-[10px]" onClick={() => handleSaveAssignee(issue.id)}>
+                            Save
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => setEditingAssigneeId(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingAssigneeId(issue.id);
+                            setAssigneeText(issue.assignee || '');
+                          }}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium cursor-pointer"
+                          title="Click to change assignee"
+                        >
+                          <User className="h-3 w-3 text-slate-400" />
+                          <span>{issue.assignee || 'Unassigned'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+
+                <CardFooter className="py-2.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-3 text-slate-400 text-[11px]">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Updated: {new Date(issue.statusUpdatedAt || issue.updatedAt).toLocaleDateString()}</span>
+                    </div>
+                    {issue.notes && issue.notes.length > 0 && (
+                      <span>• {issue.notes.length} internal notes</span>
+                    )}
+                    {recommendation && (
+                      <span className="text-indigo-600 font-semibold">• AI Recommendation Available</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {recommendation && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                        leftIcon={<Sparkles className="h-3 w-3" />}
+                        onClick={() => setSelectedRecommendation(recommendation)}
+                      >
+                        AI Recs
+                      </Button>
+                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="h-7 text-xs"
+                      rightIcon={<ChevronRight className="h-3.5 w-3.5" />}
+                      onClick={() => setSelectedIssueId(issue.id)}
+                    >
+                      View Details & Notes
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Consequential Action Confirmation Modal */}
+      {pendingStatusChange && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl border border-slate-200 p-5 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-lg shrink-0 ${pendingStatusChange.status === 'resolved' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
+                {pendingStatusChange.status === 'resolved' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Confirm Marking as {pendingStatusChange.status === 'resolved' ? 'Resolved' : 'Dismissed'}
+                </h3>
+                <p className="text-xs text-slate-600 mt-1">
+                  {pendingStatusChange.status === 'resolved'
+                    ? 'Resolving this issue marks it complete and removes it from the active open priority triage queue.'
+                    : 'Dismissing this issue marks it closed/superseded and removes it from the active triage queue.'}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Optional Resolution Note / Reason:
+              </label>
+              <textarea
+                rows={2}
+                value={statusConfirmationNote}
+                onChange={(e) => setStatusConfirmationNote(e.target.value)}
+                placeholder="e.g. Patch verified in staging, or superseded by v2 auth service..."
+                className="w-full p-2 rounded-md border border-slate-300 text-xs text-slate-900 focus:outline-hidden focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setPendingStatusChange(null)}
+                disabled={isUpdatingStatus}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant={pendingStatusChange.status === 'resolved' ? 'primary' : 'outline'}
+                onClick={() => executeStatusChange(pendingStatusChange.issueId, pendingStatusChange.status, statusConfirmationNote)}
+                disabled={isUpdatingStatus}
+              >
+                {isUpdatingStatus ? 'Updating...' : `Confirm ${pendingStatusChange.status === 'resolved' ? 'Resolution' : 'Dismissal'}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Issue Detail & Notes Modal */}
+      <IssueDetailModal
+        isOpen={Boolean(selectedIssueId)}
+        onClose={() => setSelectedIssueId(null)}
+        issueId={selectedIssueId}
+        onIssueUpdated={fetchIssues}
+        onOpenRecommendation={(rec) => {
+          setSelectedIssueId(null);
+          setSelectedRecommendation(rec);
+        }}
+      />
+
+      {/* AI Recommendation Modal */}
       <RecommendationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={Boolean(selectedRecommendation)}
+        onClose={() => setSelectedRecommendation(null)}
         recommendation={selectedRecommendation}
       />
     </div>

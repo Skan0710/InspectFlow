@@ -1,5 +1,6 @@
 import type { RawFeedbackRecord } from '../../types/import.js';
 import type { FeedbackAnalysisRecord } from '../analysis/types.js';
+import type { IssueNote, StatusHistoryEntry } from '../../types/issues.js';
 
 export interface ClusterableItem {
   id: string;
@@ -32,7 +33,7 @@ export interface IssueClusterData {
   title: string; // Concise human-readable name
   description: string;
   category: string; // Primary supplied category
-  status: 'backlog' | 'in_progress' | 'in_review' | 'completed' | 'cancelled';
+  status: 'open' | 'in_progress' | 'resolved' | 'dismissed' | 'backlog' | 'in_review' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'critical';
   impactSummary: string;
   feedbackCount: number;
@@ -46,6 +47,12 @@ export interface IssueClusterData {
   };
   avgConfidence: number;
   memberFeedbackIds: string[];
+  assignee?: string;
+  assigneeEmail?: string;
+  isSaved?: boolean;
+  statusUpdatedAt?: string;
+  notes?: IssueNote[];
+  statusHistory?: StatusHistoryEntry[];
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

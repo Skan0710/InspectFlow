@@ -7,6 +7,7 @@ import type { IssueClusterData, IssueFeedbackLink, ClusteringResult, UnmatchedFe
 import { PriorityScoringService } from './scoring/priorityScoringService.js';
 import type { ScoringOptions, IssueScoringRecord, ScoringResultSummary } from './scoring/types.js';
 import type { IssueRecommendation } from './recommendations/types.js';
+import type { IssueStatus, IssueNote, StatusHistoryEntry, IssueDetailResponse } from '../types/issues.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -100,6 +101,28 @@ export class FeedbackStore {
       const issuesList = safeParse<IssueClusterData[]>(ISSUES_FILE);
       if (issuesList) {
         for (const item of issuesList) {
+          // Normalize legacy statuses
+          if (item.status === 'backlog') item.status = 'open';
+          else if (item.status === 'completed') item.status = 'resolved';
+          else if (item.status === 'cancelled') item.status = 'dismissed';
+          else if (!item.status) item.status = 'open';
+
+          if (item.isSaved === undefined) item.isSaved = false;
+          if (!item.statusUpdatedAt) item.statusUpdatedAt = item.updatedAt || item.createdAt;
+          if (!item.notes) item.notes = [];
+          if (!item.statusHistory || item.statusHistory.length === 0) {
+            item.statusHistory = [
+              {
+                id: `hist-init-${item.id.slice(0, 8)}`,
+                fromStatus: 'none',
+                toStatus: item.status as any,
+                changedAt: item.createdAt,
+                changedBy: 'system',
+                reason: 'Initial load',
+              },
+            ];
+          }
+
           this.issues.set(item.id, item);
           if (item.metadata && (item.metadata as any).recommendation) {
             this.recommendations.set(item.id, (item.metadata as any).recommendation);
@@ -719,20 +742,55 @@ export class FeedbackStore {
   public getAllIssues(params?: {
     category?: string;
     priority?: string;
+    status?: string;
     search?: string;
+    savedOnly?: boolean;
+    assignee?: string;
+    sortBy?: 'priorityScore' | 'feedbackCount' | 'statusUpdatedAt' | 'createdAt' | 'title';
+    sortOrder?: 'asc' | 'desc';
   }): IssueClusterData[] {
     let list = Array.from(this.issues.values());
 
+    // 1. Status Filter (supporting 'open', 'in_progress', 'resolved', 'dismissed', and legacy aliases)
+    if (params?.status && params.status !== 'all') {
+      const st = params.status.toLowerCase().trim();
+      list = list.filter((c) => {
+        const itemStatus = (c.status || 'open').toLowerCase().trim();
+        if (st === 'open') return itemStatus === 'open' || itemStatus === 'backlog';
+        if (st === 'resolved') return itemStatus === 'resolved' || itemStatus === 'completed';
+        if (st === 'dismissed') return itemStatus === 'dismissed' || itemStatus === 'cancelled';
+        return itemStatus === st;
+      });
+    }
+
+    // 2. Saved issues filter
+    if (params?.savedOnly) {
+      list = list.filter((c) => Boolean(c.isSaved));
+    }
+
+    // 3. Assignee filter
+    if (params?.assignee && params.assignee !== 'all') {
+      const ass = params.assignee.toLowerCase().trim();
+      if (ass === 'unassigned') {
+        list = list.filter((c) => !c.assignee || c.assignee.trim() === '');
+      } else {
+        list = list.filter((c) => c.assignee && c.assignee.toLowerCase().trim() === ass);
+      }
+    }
+
+    // 4. Category filter
     if (params?.category && params.category !== 'all') {
       const cat = params.category.toLowerCase().trim();
       list = list.filter((c) => c.category.toLowerCase().trim() === cat);
     }
 
+    // 5. Priority filter
     if (params?.priority && params.priority !== 'all') {
       const prio = params.priority.toLowerCase().trim();
       list = list.filter((c) => c.priority.toLowerCase().trim() === prio);
     }
 
+    // 6. Text search filter
     if (params?.search && params.search.trim()) {
       const q = params.search.toLowerCase().trim();
       list = list.filter(
@@ -740,11 +798,41 @@ export class FeedbackStore {
           c.title.toLowerCase().includes(q) ||
           c.description.toLowerCase().includes(q) ||
           c.issueCode.toLowerCase().includes(q) ||
-          c.category.toLowerCase().includes(q)
+          c.category.toLowerCase().includes(q) ||
+          (c.assignee && c.assignee.toLowerCase().includes(q))
       );
     }
 
-    return list.sort((a, b) => b.feedbackCount - a.feedbackCount);
+    // 7. Sorting
+    const sortField = params?.sortBy || 'priorityScore';
+    const sortOrder = params?.sortOrder || 'desc';
+    const multiplier = sortOrder === 'asc' ? 1 : -1;
+
+    return list.sort((a, b) => {
+      if (sortField === 'priorityScore') {
+        const scoreA = Number(a.metadata?.priorityScore) || 0;
+        const scoreB = Number(b.metadata?.priorityScore) || 0;
+        if (scoreA !== scoreB) return (scoreA - scoreB) * multiplier;
+        return (a.feedbackCount - b.feedbackCount) * multiplier;
+      }
+      if (sortField === 'feedbackCount') {
+        return (a.feedbackCount - b.feedbackCount) * multiplier;
+      }
+      if (sortField === 'statusUpdatedAt') {
+        const dateA = new Date(a.statusUpdatedAt || a.updatedAt || a.createdAt).getTime();
+        const dateB = new Date(b.statusUpdatedAt || b.updatedAt || b.createdAt).getTime();
+        return (dateA - dateB) * multiplier;
+      }
+      if (sortField === 'createdAt') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return (dateA - dateB) * multiplier;
+      }
+      if (sortField === 'title') {
+        return a.title.localeCompare(b.title) * multiplier;
+      }
+      return (b.feedbackCount - a.feedbackCount) * multiplier;
+    });
   }
 
   public getIssueById(id: string): IssueClusterData | null {
@@ -787,6 +875,311 @@ export class FeedbackStore {
       }
     }
     return results;
+  }
+
+  public getIssueDetail(id: string): IssueDetailResponse | null {
+    const issue = this.issues.get(id);
+    if (!issue) return null;
+
+    const breakdown = (issue.metadata?.scoreBreakdown as any) || null;
+    const priorityScore = typeof issue.metadata?.priorityScore === 'number'
+      ? issue.metadata.priorityScore
+      : Number(issue.metadata?.priorityScore) || 0;
+
+    const frequency = issue.feedbackCount;
+    const uniqueReports = issue.uniqueTextCount;
+    const duplicateRatio = frequency > 0
+      ? Number((((frequency - uniqueReports) / frequency) * 100).toFixed(2))
+      : 0;
+
+    const negativeSentimentRatio = breakdown?.components?.negativeSentimentRatio !== undefined
+      ? breakdown.components.negativeSentimentRatio
+      : frequency > 0
+        ? Number((issue.sentimentBreakdown.negative / frequency).toFixed(2))
+        : 0;
+
+    const members = this.getFeedbackForIssue(id);
+    const recommendation = this.getRecommendationByIssueId(id);
+
+    return {
+      issue,
+      scoreBreakdown: breakdown,
+      priorityScore,
+      priorityTier: issue.priority,
+      frequency,
+      uniqueReports,
+      duplicateRatio,
+      negativeSentimentRatio,
+      members,
+      recommendation,
+      notes: issue.notes || [],
+      statusHistory: issue.statusHistory || [],
+      isSaved: Boolean(issue.isSaved),
+      statusUpdatedAt: issue.statusUpdatedAt || issue.updatedAt || issue.createdAt,
+    };
+  }
+
+  /**
+   * Persists issue changes to PostgreSQL using transactions for ACID integrity.
+   */
+  private async persistIssueToDb(issue: IssueClusterData): Promise<void> {
+    const dbConfig = getDatabaseConfig();
+    if (!dbConfig.isConfigured || !dbConfig.databaseUrl) return;
+
+    try {
+      const pool = getPgPool();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const sql = `
+          UPDATE issues
+          SET status = $1,
+              priority = $2,
+              assignee = $3,
+              assignee_email = $4,
+              is_saved = $5,
+              status_updated_at = $6,
+              notes = $7,
+              status_history = $8,
+              metadata = $9,
+              updated_at = $10
+          WHERE id = $11;
+        `;
+        await client.query(sql, [
+          issue.status,
+          issue.priority,
+          issue.assignee || null,
+          issue.assigneeEmail || null,
+          Boolean(issue.isSaved),
+          issue.statusUpdatedAt || issue.updatedAt,
+          JSON.stringify(issue.notes || []),
+          JSON.stringify(issue.statusHistory || []),
+          JSON.stringify(issue.metadata || {}),
+          issue.updatedAt,
+          issue.id,
+        ]);
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.warn('[FeedbackStore] DB update for issue skipped/failed:', err);
+    }
+  }
+
+  /**
+   * Updates issue status, recording transition history and timestamp.
+   */
+  public async updateIssueStatus(
+    id: string,
+    newStatus: IssueStatus,
+    metadata?: { changedBy?: string; reason?: string; note?: string }
+  ): Promise<IssueClusterData> {
+    const issue = this.issues.get(id);
+    if (!issue) {
+      throw new Error(`Issue with id '${id}' not found.`);
+    }
+
+    const validStatuses: IssueStatus[] = ['open', 'in_progress', 'resolved', 'dismissed'];
+    if (!validStatuses.includes(newStatus)) {
+      throw new Error(`Invalid issue status '${newStatus}'. Must be one of: ${validStatuses.join(', ')}.`);
+    }
+
+    const previousStatus = issue.status;
+    const now = new Date().toISOString();
+
+    issue.status = newStatus;
+    issue.statusUpdatedAt = now;
+    issue.updatedAt = now;
+
+    if (!issue.statusHistory) {
+      issue.statusHistory = [];
+    }
+
+    const historyEntry: StatusHistoryEntry = {
+      id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      fromStatus: previousStatus,
+      toStatus: newStatus,
+      changedAt: now,
+      changedBy: metadata?.changedBy || 'User',
+      reason: metadata?.reason || metadata?.note,
+    };
+    issue.statusHistory.unshift(historyEntry);
+
+    if (metadata?.note && metadata.note.trim()) {
+      if (!issue.notes) issue.notes = [];
+      issue.notes.unshift({
+        id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: metadata.changedBy || 'User',
+        content: metadata.note.trim(),
+        createdAt: now,
+      });
+    }
+
+    this.issues.set(issue.id, issue);
+    this.flushToDisk();
+    await this.persistIssueToDb(issue);
+
+    return issue;
+  }
+
+  /**
+   * Updates issue assignee.
+   */
+  public async updateIssueAssignee(
+    id: string,
+    assignee: string | null,
+    assigneeEmail?: string | null
+  ): Promise<IssueClusterData> {
+    const issue = this.issues.get(id);
+    if (!issue) {
+      throw new Error(`Issue with id '${id}' not found.`);
+    }
+
+    const now = new Date().toISOString();
+    issue.assignee = assignee && assignee.trim() ? assignee.trim() : undefined;
+    issue.assigneeEmail = assigneeEmail && assigneeEmail.trim() ? assigneeEmail.trim() : undefined;
+    issue.updatedAt = now;
+
+    this.issues.set(issue.id, issue);
+    this.flushToDisk();
+    await this.persistIssueToDb(issue);
+
+    return issue;
+  }
+
+  /**
+   * Toggles or sets bookmark/saved state for an issue.
+   */
+  public async toggleIssueSaved(id: string, isSaved?: boolean): Promise<IssueClusterData> {
+    const issue = this.issues.get(id);
+    if (!issue) {
+      throw new Error(`Issue with id '${id}' not found.`);
+    }
+
+    const now = new Date().toISOString();
+    issue.isSaved = isSaved !== undefined ? Boolean(isSaved) : !issue.isSaved;
+    issue.updatedAt = now;
+
+    this.issues.set(issue.id, issue);
+    this.flushToDisk();
+    await this.persistIssueToDb(issue);
+
+    return issue;
+  }
+
+  /**
+   * Appends an internal note to an issue.
+   */
+  public async addIssueNote(
+    id: string,
+    note: { author?: string; content: string }
+  ): Promise<IssueClusterData> {
+    const issue = this.issues.get(id);
+    if (!issue) {
+      throw new Error(`Issue with id '${id}' not found.`);
+    }
+
+    if (!note.content || !note.content.trim()) {
+      throw new Error('Note content cannot be empty.');
+    }
+
+    const now = new Date().toISOString();
+    if (!issue.notes) {
+      issue.notes = [];
+    }
+
+    const newNote: IssueNote = {
+      id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      author: note.author?.trim() || 'Team Member',
+      content: note.content.trim(),
+      createdAt: now,
+    };
+
+    issue.notes.unshift(newNote);
+    issue.updatedAt = now;
+
+    this.issues.set(issue.id, issue);
+    this.flushToDisk();
+    await this.persistIssueToDb(issue);
+
+    return issue;
+  }
+
+  /**
+   * Performs an atomic multi-field update on an issue.
+   */
+  public async updateIssue(
+    id: string,
+    updates: {
+      status?: IssueStatus;
+      assignee?: string | null;
+      assigneeEmail?: string | null;
+      isSaved?: boolean;
+      note?: { author?: string; content: string };
+      changedBy?: string;
+      reason?: string;
+    }
+  ): Promise<IssueClusterData> {
+    const issue = this.issues.get(id);
+    if (!issue) {
+      throw new Error(`Issue with id '${id}' not found.`);
+    }
+
+    const now = new Date().toISOString();
+
+    if (updates.status !== undefined) {
+      const validStatuses: IssueStatus[] = ['open', 'in_progress', 'resolved', 'dismissed'];
+      if (!validStatuses.includes(updates.status)) {
+        throw new Error(`Invalid issue status '${updates.status}'. Must be one of: ${validStatuses.join(', ')}.`);
+      }
+
+      if (issue.status !== updates.status) {
+        const prev = issue.status;
+        issue.status = updates.status;
+        issue.statusUpdatedAt = now;
+
+        if (!issue.statusHistory) issue.statusHistory = [];
+        issue.statusHistory.unshift({
+          id: `hist-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          fromStatus: prev,
+          toStatus: updates.status,
+          changedAt: now,
+          changedBy: updates.changedBy || 'User',
+          reason: updates.reason,
+        });
+      }
+    }
+
+    if (updates.assignee !== undefined) {
+      issue.assignee = updates.assignee && updates.assignee.trim() ? updates.assignee.trim() : undefined;
+    }
+    if (updates.assigneeEmail !== undefined) {
+      issue.assigneeEmail = updates.assigneeEmail && updates.assigneeEmail.trim() ? updates.assigneeEmail.trim() : undefined;
+    }
+    if (updates.isSaved !== undefined) {
+      issue.isSaved = Boolean(updates.isSaved);
+    }
+
+    if (updates.note && updates.note.content && updates.note.content.trim()) {
+      if (!issue.notes) issue.notes = [];
+      issue.notes.unshift({
+        id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        author: updates.note.author?.trim() || updates.changedBy || 'Team Member',
+        content: updates.note.content.trim(),
+        createdAt: now,
+      });
+    }
+
+    issue.updatedAt = now;
+    this.issues.set(issue.id, issue);
+    this.flushToDisk();
+    await this.persistIssueToDb(issue);
+
+    return issue;
   }
 
   public getLatestClusteringResult(): ClusteringResult | null {

@@ -17,28 +17,39 @@ export async function runMigrations(): Promise<{ success: boolean; message: stri
     return { success: false, message };
   }
 
-  const migrationPath = path.join(__dirname, 'migrations', '001_initial_schema.sql');
+  const migrationsDir = path.join(__dirname, 'migrations');
 
-  if (!fs.existsSync(migrationPath)) {
-    const message = `Migration file not found at: ${migrationPath}`;
+  if (!fs.existsSync(migrationsDir)) {
+    const message = `Migrations directory not found at: ${migrationsDir}`;
     console.error(`❌ ${message}`);
     return { success: false, message };
   }
 
-  const sql = fs.readFileSync(migrationPath, 'utf8');
+  const migrationFiles = fs
+    .readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort();
 
-  console.log('🔄 Connecting to PostgreSQL database to execute migrations...');
+  if (migrationFiles.length === 0) {
+    const message = `No SQL migration files found in: ${migrationsDir}`;
+    console.error(`❌ ${message}`);
+    return { success: false, message };
+  }
+
+  console.log(`🔄 Connecting to PostgreSQL database to execute ${migrationFiles.length} migrations...`);
   const pool = getPgPool();
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
-    console.log('⚡ Executing 001_initial_schema.sql...');
-    await client.query(sql);
+    for (const file of migrationFiles) {
+      console.log(`⚡ Executing ${file}...`);
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      await client.query(sql);
+    }
     await client.query('COMMIT');
 
-    const successMessage =
-      '✅ Successfully executed initial schema migrations for feedback, feedback_analysis, issues, issue_feedback, reports, analysis_runs, and dataset_versions.';
+    const successMessage = `✅ Successfully executed all ${migrationFiles.length} schema migrations (${migrationFiles.join(', ')}).`;
     console.log(successMessage);
     return { success: true, message: successMessage };
   } catch (err: unknown) {

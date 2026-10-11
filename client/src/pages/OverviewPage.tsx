@@ -401,7 +401,9 @@ export const OverviewPage: React.FC = () => {
               <Layers className="h-4 w-4 text-indigo-500" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              {metrics ? `${metrics.priorityRankings.issues.length} Issues` : '0 Issues'}
+              <Link to="/actions" className="hover:text-indigo-600 transition-colors">
+                {metrics ? `${metrics.priorityRankings.openIssuesCount !== undefined ? metrics.priorityRankings.openIssuesCount : metrics.priorityRankings.issues.length} Issues` : '0 Issues'}
+              </Link>
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
               {metrics && metrics.priorityRankings.tierSummary.critical > 0 ? (
@@ -765,11 +767,18 @@ export const OverviewPage: React.FC = () => {
                   Deterministic ranking: 100 × (0.40F + 0.35S + 0.25N).
                 </CardDescription>
               </div>
-              <Link to="/insights">
-                <Button variant="outline" size="sm" className="text-xs h-7">
-                  View in AI Insights
-                </Button>
-              </Link>
+              <div className="flex items-center gap-1.5">
+                <Link to="/actions">
+                  <Button variant="primary" size="sm" className="text-xs h-7">
+                    Action Center
+                  </Button>
+                </Link>
+                <Link to="/insights">
+                  <Button variant="outline" size="sm" className="text-xs h-7">
+                    AI Insights
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardHeader>
 
