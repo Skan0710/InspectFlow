@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import type { RawFeedbackRecord, ImportSummary, DatasetStatus, DatasetOriginType } from '../types/import.js';
 import type { FeedbackAnalysisRecord, AnalysisRunRecord } from './analysis/types.js';
 import type { IssueClusterData, IssueFeedbackLink, ClusteringResult, UnmatchedFeedbackItem } from './clustering/types.js';
+import { PriorityScoringService } from './scoring/priorityScoringService.js';
+import type { ScoringOptions, IssueScoringRecord, ScoringResultSummary } from './scoring/types.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -34,6 +36,7 @@ export class FeedbackStore {
   private issues: Map<string, IssueClusterData> = new Map();
   private issueFeedback: Map<string, IssueFeedbackLink[]> = new Map();
   private clusteringRuns: ClusteringResult[] = [];
+  private scoringService = new PriorityScoringService();
 
   private constructor() {
     this.loadStateFromDisk();
@@ -231,6 +234,11 @@ export class FeedbackStore {
       } catch (err) {
         console.warn('[FeedbackStore] DB persistence for analysis skipped/failed:', err);
       }
+    }
+
+    // If issues already exist, recalculate priority scores to reflect updated analysis
+    if (this.issues.size > 0) {
+      await this.recalculateIssuePriorityScores();
     }
   }
 
@@ -537,6 +545,9 @@ export class FeedbackStore {
 
     this.flushToDisk();
 
+    // Automatically calculate priority scores for the newly saved clusters
+    await this.recalculateIssuePriorityScores();
+
     const dbConfig = getDatabaseConfig();
     if (dbConfig.isConfigured && dbConfig.databaseUrl) {
       try {
@@ -677,5 +688,78 @@ export class FeedbackStore {
 
   public getAllClusteringRuns(): ClusteringResult[] {
     return this.clusteringRuns;
+  }
+
+  /**
+   * Recalculates deterministic priority scores across all stored issues.
+   * Priority = 100 * (0.40 * F + 0.35 * S + 0.25 * N)
+   */
+  public async recalculateIssuePriorityScores(options?: ScoringOptions): Promise<{
+    issues: IssueScoringRecord[];
+    summary: ScoringResultSummary;
+  }> {
+    const rawFeedbackMap = new Map<string, RawFeedbackRecord>();
+    for (const r of this.records) {
+      rawFeedbackMap.set(r.id, r);
+    }
+
+    const issuesList = Array.from(this.issues.values());
+    const scoringResult = this.scoringService.scoreIssues(
+      issuesList,
+      this.analyses,
+      rawFeedbackMap,
+      options
+    );
+
+    // Update in-memory issues
+    for (const scored of scoringResult.issues) {
+      const issue = this.issues.get(scored.issueId);
+      if (issue) {
+        issue.priority = scored.tier;
+        issue.metadata = {
+          ...issue.metadata,
+          priorityScore: scored.score,
+          priorityTier: scored.tier,
+          scoreBreakdown: scored.breakdown,
+          algorithmVersion: scored.algorithmVersion,
+          disclaimer: scored.breakdown.disclaimer,
+          totalMentions: scored.totalMentions,
+          uniqueReports: scored.uniqueReports,
+          duplicateRatio: scored.duplicateRatio,
+        };
+        issue.updatedAt = new Date().toISOString();
+        this.issues.set(issue.id, issue);
+      }
+    }
+
+    this.flushToDisk();
+
+    // If PostgreSQL configured, update issues in DB
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        for (const scored of scoringResult.issues) {
+          const issue = this.issues.get(scored.issueId);
+          if (issue) {
+            const sql = `
+              UPDATE issues
+              SET priority = $1, metadata = $2, updated_at = $3
+              WHERE id = $4;
+            `;
+            await pool.query(sql, [
+              issue.priority,
+              JSON.stringify(issue.metadata),
+              issue.updatedAt,
+              issue.id,
+            ]);
+          }
+        }
+      } catch (err) {
+        console.warn('[FeedbackStore] DB update for priority scores skipped/failed:', err);
+      }
+    }
+
+    return scoringResult;
   }
 }

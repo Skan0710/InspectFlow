@@ -11,6 +11,9 @@ import {
   AlertCircle, 
   HelpCircle, 
   Hash, 
+  Calculator,
+  Copy,
+  Info,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/Card';
@@ -26,6 +29,39 @@ interface RepresentativeExample {
   relevanceScore: number;
   category: string;
   source?: string;
+}
+
+interface PriorityComponents {
+  frequencyScore: number;
+  frequencyWeight: number;
+  frequencyPoints: number;
+  totalMentions: number;
+  uniqueReports: number;
+  duplicateCount: number;
+  duplicateRatio: number;
+
+  severityScore: number;
+  severityWeight: number;
+  severityPoints: number;
+  rawAverageSeverity: number;
+  severityCount: number;
+
+  negativeSentimentRatio: number;
+  negativeSentimentWeight: number;
+  negativeSentimentPoints: number;
+  negativeCount: number;
+  analyzedCount: number;
+}
+
+interface ScoreBreakdown {
+  score: number;
+  tier: 'critical' | 'high' | 'medium' | 'low';
+  components: PriorityComponents;
+  formula: string;
+  algorithmVersion: string;
+  summary: string;
+  disclaimer: string;
+  calculatedAt: string;
 }
 
 interface IssueCluster {
@@ -48,6 +84,16 @@ interface IssueCluster {
   };
   avgConfidence: number;
   memberFeedbackIds: string[];
+  metadata?: {
+    priorityScore?: number;
+    priorityTier?: string;
+    scoreBreakdown?: ScoreBreakdown;
+    algorithmVersion?: string;
+    disclaimer?: string;
+    totalMentions?: number;
+    uniqueReports?: number;
+    duplicateRatio?: number;
+  };
   createdAt: string;
 }
 
@@ -78,13 +124,15 @@ export const InsightsPage: React.FC = () => {
   const [stats, setStats] = useState<ClusteringStats | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isClustering, setIsClustering] = useState<boolean>(false);
+  const [isRecalculating, setIsRecalculating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
-  // Expanded cluster members state
+  // Expanded cluster members & score breakdown state
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null);
+  const [expandedScoreId, setExpandedScoreId] = useState<string | null>(null);
   const [clusterMembers, setClusterMembers] = useState<Record<string, MemberDetail[]>>({});
   const [loadingMembers, setLoadingMembers] = useState<string | null>(null);
 
@@ -152,6 +200,31 @@ export const InsightsPage: React.FC = () => {
     }
   };
 
+  const handleRecalculateScores = async () => {
+    setIsRecalculating(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/scoring/recalculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Recalculation failed: ${res.statusText}`);
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        await fetchClusters();
+      }
+    } catch (err: any) {
+      console.error('Error recalculating scores:', err);
+      setError(err.message || 'Error occurred while recalculating priority scores.');
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
   const toggleExpandCluster = async (clusterId: string) => {
     if (expandedClusterId === clusterId) {
       setExpandedClusterId(null);
@@ -175,6 +248,10 @@ export const InsightsPage: React.FC = () => {
         setLoadingMembers(null);
       }
     }
+  };
+
+  const toggleExpandScore = (clusterId: string) => {
+    setExpandedScoreId(expandedScoreId === clusterId ? null : clusterId);
   };
 
   const handleLoadUnmatched = async () => {
@@ -231,19 +308,28 @@ export const InsightsPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            AI Insights & Issue Clustering
+            AI Insights & Priority Scoring
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Semantic vector clustering groups similar reviews into distinct issues while preserving raw feedback categories.
+            Deterministic issue-priority scoring calculated from actual frequency, severity, and negative sentiment.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Calculator className={`h-4 w-4 ${isRecalculating ? 'animate-spin' : ''}`} />}
+            onClick={handleRecalculateScores}
+            disabled={isRecalculating || isClustering}
+          >
+            {isRecalculating ? 'Recalculating...' : 'Recalculate Scores'}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
             leftIcon={<RotateCw className={`h-4 w-4 ${isClustering ? 'animate-spin' : ''}`} />}
             onClick={handleRunClustering}
-            disabled={isClustering}
+            disabled={isClustering || isRecalculating}
           >
             {isClustering ? 'Clustering...' : 'Re-run Clustering'}
           </Button>
@@ -269,7 +355,7 @@ export const InsightsPage: React.FC = () => {
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Layers className="h-4 w-4 text-emerald-600" />
-              <span>Clustered Feedback</span>
+              <span>Total Feedback Volume</span>
             </div>
             <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalFeedbackClustered}</div>
             <div className="text-[11px] text-slate-400 mt-0.5">Reviews assigned to clusters</div>
@@ -277,10 +363,10 @@ export const InsightsPage: React.FC = () => {
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
               <Hash className="h-4 w-4 text-blue-600" />
-              <span>Unique Reports</span>
+              <span>Unique Inquiries</span>
             </div>
             <div className="mt-1 text-2xl font-bold text-slate-900">{stats.uniqueTextsCount}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Deduplicated inquiries</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">Deduplicated reports (exposing repeats)</div>
           </div>
           <div 
             className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-colors"
@@ -304,8 +390,8 @@ export const InsightsPage: React.FC = () => {
       {/* Control Bar: Filters & Search */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
-          <span>Vector Engine: <strong>TF-IDF & N-Gram Cosine Clustering</strong></span>
+          <Calculator className="h-4 w-4 text-indigo-600 shrink-0" />
+          <span>Priority Model: <strong>Priority = 100 × (0.40 × F + 0.35 × S + 0.25 × N)</strong></span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
@@ -430,7 +516,15 @@ export const InsightsPage: React.FC = () => {
         <div className="space-y-4">
           {clusters.map((cluster) => {
             const isExpanded = expandedClusterId === cluster.id;
+            const isScoreExpanded = expandedScoreId === cluster.id;
             const members = clusterMembers[cluster.id] || [];
+            const breakdown = cluster.metadata?.scoreBreakdown;
+            const priorityScore = cluster.metadata?.priorityScore !== undefined 
+              ? cluster.metadata.priorityScore 
+              : null;
+            
+            const duplicateRatio = cluster.metadata?.duplicateRatio ?? 
+              (cluster.feedbackCount > 0 ? (cluster.feedbackCount - cluster.uniqueTextCount) / cluster.feedbackCount : 0);
 
             return (
               <Card key={cluster.id} className="transition-all hover:border-slate-300">
@@ -440,12 +534,23 @@ export const InsightsPage: React.FC = () => {
                       <Badge variant={getPriorityBadgeVariant(cluster.priority)} size="sm" dot>
                         {cluster.priority.toUpperCase()} PRIORITY
                       </Badge>
+                      {priorityScore !== null && (
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          Score: {priorityScore} / 100
+                        </span>
+                      )}
                       <Badge variant={getCategoryBadgeVariant(cluster.category)} size="sm">
                         {cluster.category}
                       </Badge>
                       <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                         {cluster.issueCode}
                       </span>
+                      {duplicateRatio > 0.4 && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                          <Copy className="h-3 w-3" />
+                          {Math.round(duplicateRatio * 100)}% duplicate text
+                        </span>
+                      )}
                     </div>
                     <CardTitle className="text-base sm:text-lg font-bold text-slate-900 mt-1">
                       {cluster.title}
@@ -458,15 +563,69 @@ export const InsightsPage: React.FC = () => {
                   <div className="flex sm:flex-col items-end gap-1.5 shrink-0 text-right">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
                       <Layers className="h-3.5 w-3.5 text-indigo-600" />
-                      {cluster.feedbackCount} feedback items
+                      {cluster.feedbackCount} total mentions
                     </div>
                     <div className="text-[11px] text-slate-500">
-                      {cluster.uniqueTextCount} unique reports
+                      {cluster.uniqueTextCount} unique inquiries
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-3 pt-1">
+                  {/* Score Breakdown Section Toggle */}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 text-xs">
+                    <div 
+                      className="flex items-center justify-between cursor-pointer select-none"
+                      onClick={() => toggleExpandScore(cluster.id)}
+                    >
+                      <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                        <Calculator className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Score Breakdown: <strong>{priorityScore !== null ? `${priorityScore} pts` : 'Calculated on demand'}</strong></span>
+                        <span className="text-slate-400 text-[11px]">(Formula: 100 × [0.40×F + 0.35×S + 0.25×N])</span>
+                      </div>
+                      <span className="text-indigo-600 font-semibold inline-flex items-center gap-1">
+                        {isScoreExpanded ? <>Hide Details <ChevronUp className="h-3 w-3" /></> : <>Inspect Formula <ChevronDown className="h-3 w-3" /></>}
+                      </span>
+                    </div>
+
+                    {isScoreExpanded && breakdown && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 space-y-2.5 text-slate-700">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="rounded-md bg-white p-2 border border-slate-200">
+                            <div className="font-semibold text-slate-900">Frequency (F = 40%)</div>
+                            <div className="text-lg font-bold text-indigo-600">+{breakdown.components.frequencyPoints} pts</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              F = {breakdown.components.frequencyScore} ({breakdown.components.totalMentions} mentions, {breakdown.components.uniqueReports} unique)
+                            </div>
+                          </div>
+                          <div className="rounded-md bg-white p-2 border border-slate-200">
+                            <div className="font-semibold text-slate-900">Severity (S = 35%)</div>
+                            <div className="text-lg font-bold text-indigo-600">+{breakdown.components.severityPoints} pts</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              S = {breakdown.components.severityScore} (avg {breakdown.components.rawAverageSeverity} / 5 scale)
+                            </div>
+                          </div>
+                          <div className="rounded-md bg-white p-2 border border-slate-200">
+                            <div className="font-semibold text-slate-900">Negative Sentiment (N = 25%)</div>
+                            <div className="text-lg font-bold text-indigo-600">+{breakdown.components.negativeSentimentPoints} pts</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              N = {breakdown.components.negativeSentimentRatio} ({Math.round(breakdown.components.negativeSentimentRatio * 100)}% negative)
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Explicit Non-Financial Risk Disclaimer */}
+                        <div className="rounded-md bg-blue-50/70 border border-blue-200 p-2 text-[11px] text-blue-900 flex items-start gap-1.5">
+                          <Info className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong>Operational Heuristic Disclaimer: </strong>
+                            {breakdown.disclaimer}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Representative Feedback Citations */}
                   {cluster.representativeExamples && cluster.representativeExamples.length > 0 && (
                     <div className="space-y-2">
