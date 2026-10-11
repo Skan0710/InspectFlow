@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Sparkles,
   Play,
@@ -11,6 +11,7 @@ import {
   ChevronUp,
   SlidersHorizontal,
   Info,
+  X,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -62,12 +63,15 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
 }) => {
   const [statusData, setStatusData] = useState<AnalysisStatusResponse | null>(null);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState<boolean>(false);
   const [showFailures, setShowFailures] = useState<boolean>(false);
   const [batchSize, setBatchSize] = useState<number>(10);
   const [concurrency, setConcurrency] = useState<number>(2);
   const [rateLimitDelayMs, setRateLimitDelayMs] = useState<number>(100);
   const [limitScope, setLimitScope] = useState<'all' | 'sample20'>('all');
+
+  const wasRunningRef = useRef<boolean>(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -77,10 +81,13 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
         const data: AnalysisStatusResponse = json.data;
         setStatusData(data);
 
-        // If completed or failed and was running, signal parent
-        if (data.run?.status === 'completed' && onAnalysisComplete) {
-          onAnalysisComplete();
+        // Transition check: Only fire onAnalysisComplete when run finishes from active state
+        if (wasRunningRef.current && (data.run?.status === 'completed' || !data.isRunning)) {
+          if (onAnalysisComplete) {
+            onAnalysisComplete();
+          }
         }
+        wasRunningRef.current = Boolean(data.isRunning);
       }
     } catch (err) {
       console.warn('Failed to fetch analysis status:', err);
@@ -105,7 +112,9 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
   }, [statusData?.isRunning, fetchStatus]);
 
   const handleStartAnalysis = async () => {
+    if (isActionLoading || statusData?.isRunning) return; // Prevent duplicate rapid clicks
     setIsActionLoading(true);
+    setActionError(null);
     try {
       const limit = limitScope === 'sample20' ? 20 : undefined;
       const res = await fetch('/api/analysis/start', {
@@ -121,12 +130,15 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
 
       if (res.ok || res.status === 202) {
         setShowConfig(false);
+        wasRunningRef.current = true;
         await fetchStatus();
       } else {
-        const errJson = await res.json();
-        alert(errJson.message || 'Failed to start analysis run');
+        const errJson = await res.json().catch(() => ({}));
+        setActionError(errJson.message || 'Failed to start analysis run.');
       }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error starting analysis.';
+      setActionError(msg);
       console.error('Failed to start analysis:', err);
     } finally {
       setIsActionLoading(false);
@@ -134,7 +146,9 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
   };
 
   const handleCancelRun = async () => {
+    if (isActionLoading) return;
     setIsActionLoading(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/analysis/cancel', {
         method: 'POST',
@@ -143,8 +157,13 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
       });
       if (res.ok) {
         await fetchStatus();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setActionError(errJson.message || 'Failed to cancel run.');
       }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error cancelling run.';
+      setActionError(msg);
       console.error('Failed to cancel analysis run:', err);
     } finally {
       setIsActionLoading(false);
@@ -152,7 +171,9 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
   };
 
   const handleResumeRun = async () => {
+    if (isActionLoading || statusData?.isRunning) return; // Prevent duplicate rapid clicks
     setIsActionLoading(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/analysis/resume', {
         method: 'POST',
@@ -164,9 +185,15 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
         }),
       });
       if (res.ok || res.status === 202) {
+        wasRunningRef.current = true;
         await fetchStatus();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setActionError(errJson.message || 'Failed to resume analysis run.');
       }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error resuming analysis.';
+      setActionError(msg);
       console.error('Failed to resume analysis run:', err);
     } finally {
       setIsActionLoading(false);
@@ -299,6 +326,26 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Action Error Alert Banner */}
+      {actionError && (
+        <div className="mx-4 sm:mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 flex items-start justify-between gap-3 text-xs text-rose-900 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-rose-950">Analysis Pipeline Notice</p>
+              <p className="text-rose-800 mt-0.5">{actionError}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActionError(null)}
+            className="text-rose-500 hover:text-rose-800 p-1 rounded-md"
+            aria-label="Dismiss notice"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Tunable Pipeline Configuration Drawer */}
       {showConfig && !isRunning && (

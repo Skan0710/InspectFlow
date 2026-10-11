@@ -432,9 +432,15 @@ export class FeedbackStore {
     category?: string;
     search?: string;
     datasetType?: 'all' | DatasetOriginType;
-  }) {
+    sentiment?: string;
+    topic?: string;
+    severity?: number | 'all';
+    analysisStatus?: 'analyzed' | 'pending' | 'all';
+    sortBy?: 'rowNumber' | 'severity' | 'confidence' | 'sentimentScore' | 'category' | 'importedAt';
+    sortOrder?: 'asc' | 'desc';
+  } = {}) {
     const page = Math.max(1, params.page || 1);
-    const pageSize = Math.min(100, Math.max(1, params.pageSize || 25));
+    const pageSize = Math.max(1, params.pageSize || 25);
     let filtered = this.records;
 
     // Filter by dataset origin type (distinguish genuine vs demo sample)
@@ -449,19 +455,114 @@ export class FeedbackStore {
       );
     }
 
+    // Filter by analysis status
+    if (params.analysisStatus && params.analysisStatus !== 'all') {
+      if (params.analysisStatus === 'analyzed') {
+        filtered = filtered.filter((r) => this.analyses.has(r.id));
+      } else if (params.analysisStatus === 'pending') {
+        filtered = filtered.filter((r) => !this.analyses.has(r.id));
+      }
+    }
+
+    // Filter by sentiment (only matches analyzed records with that sentiment)
+    if (params.sentiment && params.sentiment !== 'all') {
+      const targetSentiment = params.sentiment.toLowerCase().trim();
+      filtered = filtered.filter((r) => {
+        const analysis = this.analyses.get(r.id);
+        return Boolean(analysis && analysis.sentiment.toLowerCase().trim() === targetSentiment);
+      });
+    }
+
+    // Filter by severity
+    if (params.severity !== undefined && params.severity !== 'all') {
+      const targetSev = Number(params.severity);
+      filtered = filtered.filter((r) => {
+        const analysis = this.analyses.get(r.id);
+        if (!analysis) return false;
+        const sev = analysis.severity || (analysis.urgencyScore ? Math.round(analysis.urgencyScore * 5) : 3);
+        return sev === targetSev;
+      });
+    }
+
+    // Filter by topic (matches primary topic or secondary topics)
+    if (params.topic && params.topic.trim() && params.topic !== 'all') {
+      const targetTopic = params.topic.toLowerCase().trim();
+      filtered = filtered.filter((r) => {
+        const analysis = this.analyses.get(r.id);
+        if (!analysis) return false;
+        if (analysis.primaryTopic && analysis.primaryTopic.toLowerCase().includes(targetTopic)) {
+          return true;
+        }
+        if (Array.isArray(analysis.topics)) {
+          return analysis.topics.some((t) => t.toLowerCase().includes(targetTopic));
+        }
+        return false;
+      });
+    }
+
     if (params.search && params.search.trim()) {
       const q = params.search.toLowerCase().trim();
-      filtered = filtered.filter(
-        (r) =>
+      filtered = filtered.filter((r) => {
+        if (
           r.review.toLowerCase().includes(q) ||
           r.category.toLowerCase().includes(q) ||
           r.source.toLowerCase().includes(q)
-      );
+        ) {
+          return true;
+        }
+        const analysis = this.analyses.get(r.id);
+        if (analysis) {
+          if (analysis.summary && analysis.summary.toLowerCase().includes(q)) return true;
+          if (analysis.primaryTopic && analysis.primaryTopic.toLowerCase().includes(q)) return true;
+        }
+        return false;
+      });
     }
+
+    // Sorting
+    const sortBy = params.sortBy || 'rowNumber';
+    const sortOrder = params.sortOrder === 'desc' ? -1 : 1;
+
+    filtered = [...filtered].sort((a, b) => {
+      if (sortBy === 'rowNumber') {
+        return ((a.rowNumber || 0) - (b.rowNumber || 0)) * sortOrder;
+      }
+      if (sortBy === 'importedAt') {
+        return (new Date(a.importedAt).getTime() - new Date(b.importedAt).getTime()) * sortOrder;
+      }
+      if (sortBy === 'category') {
+        return a.category.localeCompare(b.category) * sortOrder;
+      }
+      if (sortBy === 'severity') {
+        const anA = this.analyses.get(a.id);
+        const anB = this.analyses.get(b.id);
+        const sevA = anA ? (anA.severity || (anA.urgencyScore ? Math.round(anA.urgencyScore * 5) : 3)) : -1;
+        const sevB = anB ? (anB.severity || (anB.urgencyScore ? Math.round(anB.urgencyScore * 5) : 3)) : -1;
+        return (sevA - sevB) * sortOrder;
+      }
+      if (sortBy === 'confidence') {
+        const anA = this.analyses.get(a.id);
+        const anB = this.analyses.get(b.id);
+        const confA = anA ? anA.confidenceScore : -1;
+        const confB = anB ? anB.confidenceScore : -1;
+        return (confA - confB) * sortOrder;
+      }
+      if (sortBy === 'sentimentScore') {
+        const anA = this.analyses.get(a.id);
+        const anB = this.analyses.get(b.id);
+        const scoreA = anA ? anA.sentimentScore : -99;
+        const scoreB = anB ? anB.sentimentScore : -99;
+        return (scoreA - scoreB) * sortOrder;
+      }
+      return 0;
+    });
 
     const total = filtered.length;
     const offset = (page - 1) * pageSize;
-    const data = filtered.slice(offset, offset + pageSize);
+    const data = filtered.slice(offset, offset + pageSize).map((r) => ({
+      ...r,
+      analysis: this.analyses.get(r.id) || undefined,
+    }));
 
     return {
       data,

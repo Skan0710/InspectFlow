@@ -6,7 +6,9 @@ import {
   AlertCircle, 
   X, 
   RefreshCw, 
-  FileSpreadsheet, 
+  FileSpreadsheet,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
@@ -36,12 +38,14 @@ interface FeedbackImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportSuccess: (summary: ImportSummary) => void;
+  onStartAnalysis?: (importedCount: number) => void;
 }
 
 export const FeedbackImportModal: React.FC<FeedbackImportModalProps> = ({
   isOpen,
   onClose,
   onImportSuccess,
+  onStartAnalysis,
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -157,15 +161,49 @@ export const FeedbackImportModal: React.FC<FeedbackImportModalProps> = ({
           {/* Success Summary View */}
           {resultSummary ? (
             <div className="space-y-5 animate-in fade-in">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-5">
-                <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  <span>Batch Processed Successfully</span>
+              <div className={`rounded-xl border p-5 ${
+                resultSummary.status === 'failed'
+                  ? 'border-rose-200 bg-rose-50/80 text-rose-800'
+                  : resultSummary.status === 'partial'
+                  ? 'border-amber-200 bg-amber-50/80 text-amber-800'
+                  : 'border-emerald-200 bg-emerald-50/80 text-emerald-800'
+              }`}>
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  {resultSummary.status === 'failed' ? (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-rose-600" />
+                      <span>Ingestion Failed — No Valid Records Imported</span>
+                    </>
+                  ) : resultSummary.status === 'partial' ? (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                      <span>Partial Ingestion — Some Rows Failed Validation</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                      <span>Batch Processed Successfully</span>
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-emerald-700 mt-1">
+                <p className="text-xs mt-1">
                   Batch ID: <strong className="font-mono">{resultSummary.batchId}</strong>
                 </p>
               </div>
+
+              {/* Duplicate Notice Banner when all rows were skipped */}
+              {resultSummary.importedCount === 0 && resultSummary.skippedCount > 0 && (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 text-xs text-indigo-900 flex items-start gap-2.5">
+                  <Info className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold">Idempotent Deduplication: </span>
+                    <span>
+                      All {resultSummary.skippedCount.toLocaleString()} rows in this file match existing records in the database.
+                      Duplicate rows were safely skipped, and all previously stored customer reviews and AI analyses were preserved intact.
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Statistics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -353,15 +391,31 @@ export const FeedbackImportModal: React.FC<FeedbackImportModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4 bg-slate-50/70">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-6 py-4 bg-slate-50/70">
           {resultSummary ? (
             <>
               <Button variant="outline" size="sm" onClick={handleReset}>
                 Import Another File
               </Button>
-              <Button variant="primary" size="sm" onClick={onClose}>
-                Done & View Feed
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  Done & View Feed
+                </Button>
+                {resultSummary.importedCount > 0 && onStartAnalysis && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      onClose();
+                      onStartAnalysis(resultSummary.importedCount);
+                    }}
+                    leftIcon={<Sparkles className="h-4 w-4" />}
+                    className="bg-indigo-600 hover:bg-indigo-500 shadow-sm"
+                  >
+                    Start AI Analysis ({resultSummary.importedCount.toLocaleString()} new)
+                  </Button>
+                )}
+              </div>
             </>
           ) : (
             <>

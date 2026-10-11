@@ -10,6 +10,7 @@ import datasetRoutes from './routes/dataset.js';
 import analysisRoutes from './routes/analysis.js';
 import clusterRoutes from './routes/clusters.js';
 import scoringRoutes from './routes/scoring.js';
+import analyticsRoutes from './routes/analytics.js';
 
 dotenv.config();
 
@@ -118,6 +119,9 @@ app.use('/api/clusters', clusterRoutes);
 
 // Deterministic Issue Priority Scoring Routes
 app.use('/api/scoring', scoringRoutes);
+
+// Customer Intelligence and Feedback Analytics Routes
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

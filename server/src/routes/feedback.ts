@@ -117,23 +117,79 @@ router.get('/import/batches/:id', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/feedback
- * Returns paginated feedback records with filtering by category or search term.
+ * GET /api/feedback/metrics
+ * GET /api/feedback/stats
+ * Dedicated metrics aggregation endpoint matching analytics specifications.
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/metrics', async (req: Request, res: Response) => {
+  const { validateAnalyticsFilters } = await import('./analytics.js');
+  const { AnalyticsService } = await import('../services/analytics/analyticsService.js');
+  const { filters, error } = validateAnalyticsFilters(req.query);
+  if (error) {
+    res.status(400).json({ error: 'ValidationError', message: error });
+    return;
+  }
+  const analyticsService = new AnalyticsService();
+  const metrics = await analyticsService.getMetrics(filters);
+  res.status(200).json(metrics);
+});
+
+router.get('/stats', async (req: Request, res: Response) => {
+  const { validateAnalyticsFilters } = await import('./analytics.js');
+  const { AnalyticsService } = await import('../services/analytics/analyticsService.js');
+  const { filters, error } = validateAnalyticsFilters(req.query);
+  if (error) {
+    res.status(400).json({ error: 'ValidationError', message: error });
+    return;
+  }
+  const analyticsService = new AnalyticsService();
+  const metrics = await analyticsService.getMetrics(filters);
+  res.status(200).json(metrics);
+});
+
+/**
+ * GET /api/feedback
+ * Returns paginated feedback records with filtering by category, sentiment, topic, analysisStatus, or search term.
+ */
+router.get('/', async (req: Request, res: Response) => {
   const page = Number(req.query.page) || 1;
   const pageSize = Number(req.query.pageSize) || 25;
-  const category = req.query.category as string | undefined;
-  const search = req.query.search as string | undefined;
 
-  const datasetType = req.query.datasetType as any;
+  if (isNaN(page) || page < 1) {
+    res.status(400).json({
+      error: 'ValidationError',
+      message: 'Query parameter "page" must be a positive integer greater than or equal to 1.',
+    });
+    return;
+  }
+
+  if (isNaN(pageSize) || pageSize < 1 || pageSize > 100) {
+    res.status(400).json({
+      error: 'ValidationError',
+      message: 'Query parameter "pageSize" must be a positive integer between 1 and 100.',
+    });
+    return;
+  }
+
+  const { validateAnalyticsFilters } = await import('./analytics.js');
+  const { filters, error } = validateAnalyticsFilters(req.query);
+  if (error) {
+    res.status(400).json({ error: 'ValidationError', message: error });
+    return;
+  }
 
   const result = store.getRecords({
     page,
     pageSize,
-    category,
-    search,
-    datasetType,
+    category: filters.category,
+    search: filters.search,
+    datasetType: filters.datasetType,
+    sentiment: filters.sentiment,
+    topic: filters.topic,
+    severity: filters.severity,
+    analysisStatus: filters.analysisStatus,
+    sortBy: filters.sortBy,
+    sortOrder: filters.sortOrder,
   });
 
   // Attach analysis to records if present
@@ -144,7 +200,31 @@ router.get('/', (req: Request, res: Response) => {
 
   res.status(200).json({
     ...result,
+    filtersApplied: filters,
     data: dataWithAnalysis,
+  });
+});
+
+/**
+ * GET /api/feedback/:id
+ * Retrieves a single feedback record with full analysis details.
+ */
+router.get('/:id', (req: Request, res: Response) => {
+  const feedbackRecord = store.getRecordById(req.params.id);
+  if (!feedbackRecord) {
+    res.status(404).json({
+      error: 'NotFound',
+      message: `Feedback record with ID "${req.params.id}" not found.`,
+    });
+    return;
+  }
+
+  const analysis = store.getAnalysisByFeedbackId(feedbackRecord.id);
+  res.status(200).json({
+    data: {
+      ...feedbackRecord,
+      analysis,
+    },
   });
 });
 
