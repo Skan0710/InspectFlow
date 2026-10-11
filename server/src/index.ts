@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { getDatabaseConfig } from './db/config.js';
 import { checkDatabaseHealth } from './db/health.js';
 import { DatabaseNotConfiguredError } from './db/client.js';
+import { getAIStatus } from './services/ai/index.js';
 import feedbackRoutes from './routes/feedback.js';
 import datasetRoutes from './routes/dataset.js';
 
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 // General Health Check Endpoint
 app.get('/api/health', async (_req: Request, res: Response) => {
   const dbConfig = getDatabaseConfig();
+  const aiStatus = getAIStatus();
 
   res.status(200).json({
     status: 'ok',
@@ -35,6 +37,29 @@ app.get('/api/health', async (_req: Request, res: Response) => {
       configured: dbConfig.isConfigured,
       missingVariables: dbConfig.missingVariables,
     },
+    ai: {
+      configured: aiStatus.configured,
+      provider: aiStatus.provider,
+      model: aiStatus.model,
+    },
+  });
+});
+
+// Dedicated AI Health / Capability Check Endpoint
+app.get('/api/health/ai', async (_req: Request, res: Response) => {
+  const aiStatus = getAIStatus();
+
+  res.status(200).json({
+    status: aiStatus.configured ? 'ready' : 'unconfigured',
+    configured: aiStatus.configured,
+    provider: aiStatus.provider,
+    model: aiStatus.model,
+    timeoutMs: aiStatus.timeoutMs,
+    maxRetries: aiStatus.maxRetries,
+    timestamp: new Date().toISOString(),
+    message: aiStatus.configured
+      ? `AI provider '${aiStatus.provider}' initialized and ready.`
+      : 'AI provider is unconfigured. Set AI_PROVIDER and corresponding API key (e.g. GEMINI_API_KEY, OPENAI_API_KEY).',
   });
 });
 
@@ -123,6 +148,14 @@ app.listen(PORT, () => {
     );
   } else {
     console.log('✅ Database configuration detected in environment.');
+  }
+
+  const aiStatus = getAIStatus();
+  console.log(`📡 AI health check available at http://localhost:${PORT}/api/health/ai`);
+  if (!aiStatus.configured) {
+    console.log(`⚠️  AI Provider is unconfigured (${aiStatus.provider}). Real model analysis will report unconfigured until credentials are supplied.`);
+  } else {
+    console.log(`🤖 AI Provider configured: ${aiStatus.provider} (model: ${aiStatus.model})`);
   }
 });
 
