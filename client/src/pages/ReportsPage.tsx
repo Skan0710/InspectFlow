@@ -104,7 +104,13 @@ export const ReportsPage: React.FC = () => {
             <CardFooter className="py-3">
               <span className="text-xs text-slate-400 font-mono">SOC2 Compliant Delivery</span>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" leftIcon={<Download className="h-3.5 w-3.5" />}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  leftIcon={<Download className="h-3.5 w-3.5" />}
+                  onClick={() => window.open('/api/feedback/export', '_blank')}
+                  title="Download exported feedback dataset as CSV"
+                >
                   Download Asset
                 </Button>
                 <Button variant="secondary" size="sm" leftIcon={<Send className="h-3.5 w-3.5" />}>

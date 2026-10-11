@@ -149,50 +149,22 @@ export class FeedbackStore {
     }
   }
 
-  private flushToDisk(): void {
+  public flushToDisk(): void {
     try {
       if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
-      fs.writeFileSync(
-        BATCHES_FILE,
-        JSON.stringify(Array.from(this.batches.values()), null, 2),
-        'utf8'
-      );
-      fs.writeFileSync(
-        RECORDS_FILE,
-        JSON.stringify(this.records, null, 2),
-        'utf8'
-      );
-      fs.writeFileSync(
-        ANALYSES_FILE,
-        JSON.stringify(Array.from(this.analyses.values()), null, 2),
-        'utf8'
-      );
-      fs.writeFileSync(
-        RUNS_FILE,
-        JSON.stringify(Array.from(this.analysisRuns.values()), null, 2),
-        'utf8'
-      );
-      fs.writeFileSync(
-        ISSUES_FILE,
-        JSON.stringify(Array.from(this.issues.values()), null, 2),
-        'utf8'
-      );
+      fs.writeFileSync(BATCHES_FILE, JSON.stringify(Array.from(this.batches.values())), 'utf8');
+      fs.writeFileSync(RECORDS_FILE, JSON.stringify(this.records), 'utf8');
+      fs.writeFileSync(ANALYSES_FILE, JSON.stringify(Array.from(this.analyses.values())), 'utf8');
+      fs.writeFileSync(RUNS_FILE, JSON.stringify(Array.from(this.analysisRuns.values())), 'utf8');
+      fs.writeFileSync(ISSUES_FILE, JSON.stringify(Array.from(this.issues.values())), 'utf8');
       const allLinks: IssueFeedbackLink[] = [];
       for (const links of this.issueFeedback.values()) {
         allLinks.push(...links);
       }
-      fs.writeFileSync(
-        ISSUE_FEEDBACK_FILE,
-        JSON.stringify(allLinks, null, 2),
-        'utf8'
-      );
-      fs.writeFileSync(
-        CLUSTERING_RUNS_FILE,
-        JSON.stringify(this.clusteringRuns, null, 2),
-        'utf8'
-      );
+      fs.writeFileSync(ISSUE_FEEDBACK_FILE, JSON.stringify(allLinks), 'utf8');
+      fs.writeFileSync(CLUSTERING_RUNS_FILE, JSON.stringify(this.clusteringRuns), 'utf8');
     } catch (err) {
       console.error('[FeedbackStore] Failed to persist data to disk:', err);
     }
@@ -340,14 +312,19 @@ export class FeedbackStore {
     this.flushToDisk();
   }
 
-  public async saveRecordsChunk(chunk: RawFeedbackRecord[]): Promise<void> {
+  public async saveRecordsChunk(
+    chunk: RawFeedbackRecord[],
+    options?: { skipFlush?: boolean }
+  ): Promise<void> {
     if (chunk.length === 0) return;
 
     for (const rec of chunk) {
       this.records.push(rec);
       this.recordHashes.add(rec.contentHash);
     }
-    this.flushToDisk();
+    if (!options?.skipFlush) {
+      this.flushToDisk();
+    }
 
     // If PostgreSQL is configured, also persist directly to database table
     const dbConfig = getDatabaseConfig();
@@ -453,6 +430,181 @@ export class FeedbackStore {
 
   public getBatchById(id: string): ImportSummary | null {
     return this.batches.get(id) || null;
+  }
+
+  /**
+   * Retrieves paginated feedback records.
+   * Uses PostgreSQL-backed indexed pagination when database is configured to prevent loading
+   * all records into memory, falling back gracefully to optimized in-memory store.
+   */
+  public async getPaginatedRecords(params: {
+    page?: number;
+    pageSize?: number;
+    category?: string;
+    search?: string;
+    datasetType?: 'all' | DatasetOriginType;
+    sentiment?: string;
+    topic?: string;
+    severity?: number | 'all';
+    analysisStatus?: 'analyzed' | 'pending' | 'all';
+    sortBy?: 'rowNumber' | 'severity' | 'confidence' | 'sentimentScore' | 'category' | 'importedAt';
+    sortOrder?: 'asc' | 'desc';
+  } = {}) {
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        const page = Math.max(1, params.page || 1);
+        const pageSize = Math.max(1, Math.min(100, params.pageSize || 25));
+        const offset = (page - 1) * pageSize;
+
+        const whereClauses: string[] = [];
+        const values: any[] = [];
+        let paramIdx = 1;
+
+        if (params.category && params.category !== 'all') {
+          whereClauses.push(`LOWER(f.metadata->>'category') = LOWER($${paramIdx++})`);
+          values.push(params.category.trim());
+        }
+
+        if (params.datasetType && params.datasetType !== 'all') {
+          whereClauses.push(`f.metadata->>'datasetType' = $${paramIdx++}`);
+          values.push(params.datasetType);
+        }
+
+        if (params.search && params.search.trim()) {
+          whereClauses.push(`f.content ILIKE $${paramIdx++}`);
+          values.push(`%${params.search.trim()}%`);
+        }
+
+        if (params.sentiment && params.sentiment !== 'all') {
+          whereClauses.push(`LOWER(fa.sentiment) = LOWER($${paramIdx++})`);
+          values.push(params.sentiment.trim());
+        }
+
+        if (params.topic && params.topic !== 'all' && params.topic.trim()) {
+          whereClauses.push(`LOWER(fa.primary_topic) ILIKE $${paramIdx++}`);
+          values.push(`%${params.topic.trim()}%`);
+        }
+
+        if (params.severity !== undefined && params.severity !== 'all') {
+          whereClauses.push(`ROUND(COALESCE(fa.urgency_score * 5, 3)) = $${paramIdx++}`);
+          values.push(Number(params.severity));
+        }
+
+        if (params.analysisStatus && params.analysisStatus !== 'all') {
+          if (params.analysisStatus === 'analyzed') {
+            whereClauses.push(`fa.id IS NOT NULL`);
+          } else if (params.analysisStatus === 'pending') {
+            whereClauses.push(`fa.id IS NULL`);
+          }
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        let orderClause = 'f.created_at DESC';
+        const sortOrder = params.sortOrder === 'asc' ? 'ASC' : 'DESC';
+        if (params.sortBy === 'category') {
+          orderClause = `(f.metadata->>'category') ${sortOrder}`;
+        } else if (params.sortBy === 'importedAt') {
+          orderClause = `f.created_at ${sortOrder}`;
+        } else if (params.sortBy === 'sentimentScore') {
+          orderClause = `COALESCE(fa.sentiment_score, -99) ${sortOrder}`;
+        } else if (params.sortBy === 'confidence') {
+          orderClause = `COALESCE(fa.confidence_score, 0) ${sortOrder}`;
+        } else if (params.sortBy === 'severity') {
+          orderClause = `COALESCE(fa.urgency_score, 0) ${sortOrder}`;
+        }
+
+        const countQuery = `
+          SELECT COUNT(*)::int as total
+          FROM feedback f
+          LEFT JOIN feedback_analysis fa ON f.id = fa.feedback_id
+          ${whereSql}
+        `;
+        const countRes = await pool.query(countQuery, values);
+        const total = countRes.rows[0]?.total || 0;
+
+        const dataQuery = `
+          SELECT 
+            f.id,
+            f.content as review,
+            COALESCE(f.metadata->>'category', 'General Feedback') as category,
+            f.external_id as "contentHash",
+            f.source,
+            (f.metadata->>'rowNumber')::int as "rowNumber",
+            f.metadata->>'batchId' as "batchId",
+            f.created_at as "importedAt",
+            COALESCE((f.metadata->>'isSample')::boolean, false) as "isSample",
+            COALESCE(f.metadata->>'datasetType', 'genuine_import') as "datasetType",
+            fa.id as "analysisId",
+            fa.sentiment,
+            fa.sentiment_score as "sentimentScore",
+            fa.urgency,
+            fa.urgency_score as "urgencyScore",
+            fa.primary_topic as "primaryTopic",
+            fa.topics,
+            fa.key_phrases as "keyPhrases",
+            fa.summary,
+            fa.confidence_score as "confidenceScore",
+            fa.model_version as "modelVersion",
+            fa.analyzed_at as "analyzedAt"
+          FROM feedback f
+          LEFT JOIN feedback_analysis fa ON f.id = fa.feedback_id
+          ${whereSql}
+          ORDER BY ${orderClause}
+          LIMIT $${paramIdx++} OFFSET $${paramIdx++}
+        `;
+
+        const dataRes = await pool.query(dataQuery, [...values, pageSize, offset]);
+        const data = dataRes.rows.map((row: any) => ({
+          id: row.id,
+          review: row.review,
+          category: row.category,
+          contentHash: row.contentHash,
+          source: row.source,
+          rowNumber: row.rowNumber || 1,
+          batchId: row.batchId || 'default',
+          importedAt: row.importedAt,
+          isSample: row.isSample,
+          datasetType: row.datasetType,
+          analysis: row.analysisId
+            ? {
+                id: row.analysisId,
+                feedbackId: row.id,
+                sentiment: row.sentiment,
+                sentimentScore: Number(row.sentimentScore),
+                urgency: row.urgency,
+                urgencyScore: Number(row.urgencyScore),
+                primaryTopic: row.primaryTopic,
+                topics: typeof row.topics === 'string' ? JSON.parse(row.topics) : row.topics || [],
+                keyPhrases: typeof row.keyPhrases === 'string' ? JSON.parse(row.keyPhrases) : row.keyPhrases || [],
+                summary: row.summary,
+                confidenceScore: Number(row.confidenceScore),
+                modelVersion: row.modelVersion,
+                promptVersion: 'v1.0.0',
+                analyzedAt: row.analyzedAt,
+                createdAt: row.analyzedAt,
+                updatedAt: row.analyzedAt,
+              }
+            : undefined,
+        }));
+
+        return {
+          data,
+          pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize),
+          },
+        };
+      } catch (dbErr) {
+        console.warn('[FeedbackStore] Database pagination query failed, falling back to in-memory store:', dbErr);
+      }
+    }
+
+    return this.getRecords(params);
   }
 
   public getRecords(params: {

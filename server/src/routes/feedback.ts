@@ -49,13 +49,40 @@ const upload = multer({
   },
 });
 
+const handleUpload = (req: Request, res: Response, next: NextFunction) => {
+  upload.single('file')(req, res, (err: unknown) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({
+            error: 'PayloadTooLarge',
+            message: 'File exceeds maximum upload limit of 50MB.',
+          });
+        }
+        return res.status(400).json({
+          error: 'UploadError',
+          message: err.message,
+        });
+      }
+      if (err instanceof Error && err.message.includes('Invalid file type')) {
+        return res.status(400).json({
+          error: 'InvalidFileType',
+          message: err.message,
+        });
+      }
+      return next(err);
+    }
+    next();
+  });
+};
+
 /**
  * POST /api/feedback/import
  * Streaming CSV feedback ingestion endpoint with validation and duplicate prevention.
  */
 router.post(
   '/import',
-  upload.single('file'),
+  handleUpload,
   async (req: Request, res: Response, next: NextFunction) => {
     if (!req.file) {
       res.status(400).json({
@@ -304,10 +331,10 @@ router.post('/submit', handleManualFeedbackSubmission);
  * Returns paginated feedback records with filtering by category, sentiment, topic, analysisStatus, or search term.
  */
 router.get('/', async (req: Request, res: Response) => {
-  const page = Number(req.query.page) || 1;
-  const pageSize = Number(req.query.pageSize) || 25;
+  const page = req.query.page !== undefined ? Number(req.query.page) : 1;
+  const pageSize = req.query.pageSize !== undefined ? Number(req.query.pageSize) : 25;
 
-  if (isNaN(page) || page < 1) {
+  if (isNaN(page) || !Number.isInteger(page) || page < 1) {
     res.status(400).json({
       error: 'ValidationError',
       message: 'Query parameter "page" must be a positive integer greater than or equal to 1.',
@@ -315,7 +342,7 @@ router.get('/', async (req: Request, res: Response) => {
     return;
   }
 
-  if (isNaN(pageSize) || pageSize < 1 || pageSize > 100) {
+  if (isNaN(pageSize) || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
     res.status(400).json({
       error: 'ValidationError',
       message: 'Query parameter "pageSize" must be a positive integer between 1 and 100.',
@@ -330,7 +357,7 @@ router.get('/', async (req: Request, res: Response) => {
     return;
   }
 
-  const result = store.getRecords({
+  const result = await store.getPaginatedRecords({
     page,
     pageSize,
     category: filters.category,
@@ -344,17 +371,122 @@ router.get('/', async (req: Request, res: Response) => {
     sortOrder: filters.sortOrder,
   });
 
-  // Attach analysis to records if present
-  const dataWithAnalysis = result.data.map((r) => ({
-    ...r,
-    analysis: store.getAnalysisByFeedbackId(r.id),
-  }));
-
   res.status(200).json({
     ...result,
     filtersApplied: filters,
-    data: dataWithAnalysis,
   });
+});
+
+/**
+ * GET /api/feedback/export
+ * Streaming CSV feedback export endpoint supporting server-side filtering.
+ * Uses bounded chunks and res.write drain backpressure handling.
+ */
+router.get('/export', async (req: Request, res: Response) => {
+  try {
+    const { validateAnalyticsFilters } = await import('./analytics.js');
+    const { filters, error } = validateAnalyticsFilters(req.query);
+    if (error) {
+      res.status(400).json({ error: 'ValidationError', message: error });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="insightflow-feedback-export-${Date.now()}.csv"`
+    );
+
+    // CSV escaping helper to safely quote fields and neutralize spreadsheet formula injection
+    const escapeCsv = (val: unknown): string => {
+      if (val === null || val === undefined) return '""';
+      let str = String(val);
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    // Header row
+    const headers = [
+      'id',
+      'review',
+      'category',
+      'source',
+      'datasetType',
+      'importedAt',
+      'sentiment',
+      'topic',
+      'urgencyScore',
+      'confidence',
+      'status',
+    ];
+    res.write(headers.join(',') + '\r\n');
+
+    // Bounded streaming: fetch records in chunks of 500 to keep memory flat
+    const EXPORT_CHUNK_SIZE = 500;
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const pageResult = await store.getPaginatedRecords({
+        page,
+        pageSize: EXPORT_CHUNK_SIZE,
+        category: filters.category,
+        search: filters.search,
+        datasetType: filters.datasetType,
+        sentiment: filters.sentiment,
+        topic: filters.topic,
+        severity: filters.severity,
+        analysisStatus: filters.analysisStatus,
+        sortBy: (filters.sortBy as any) || 'importedAt',
+        sortOrder: filters.sortOrder || 'desc',
+      });
+
+      if (!pageResult.data || pageResult.data.length === 0) {
+        break;
+      }
+
+      for (const item of pageResult.data) {
+        const row = [
+          escapeCsv(item.id),
+          escapeCsv(item.review),
+          escapeCsv(item.category),
+          escapeCsv(item.source),
+          escapeCsv(item.datasetType || 'genuine'),
+          escapeCsv(item.importedAt),
+          escapeCsv(item.analysis?.sentiment || 'unanalyzed'),
+          escapeCsv(item.analysis?.primaryTopic || ''),
+          escapeCsv(item.analysis?.urgencyScore ?? ''),
+          escapeCsv(item.analysis?.confidenceScore ?? ''),
+          escapeCsv(item.analysis ? 'analyzed' : 'pending'),
+        ].join(',');
+
+        const canContinue = res.write(row + '\r\n');
+        if (!canContinue) {
+          await new Promise<void>((resolve) => res.once('drain', resolve));
+        }
+      }
+
+      if (page >= pageResult.pagination.totalPages || pageResult.data.length < EXPORT_CHUNK_SIZE) {
+        hasMore = false;
+      } else {
+        page++;
+      }
+    }
+
+    res.end();
+  } catch (err: unknown) {
+    console.error('[FeedbackExport] Error during CSV export streaming:', err);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'ExportError',
+        message: 'Failed to stream feedback export',
+      });
+    } else {
+      res.end();
+    }
+  }
 });
 
 /**

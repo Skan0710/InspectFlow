@@ -13,6 +13,7 @@ import {
   X,
   ChevronRight,
   MessageSquarePlus,
+  Download,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -251,6 +252,22 @@ export const FeedbackPage: React.FC = () => {
     setPage(1);
   };
 
+  const handleExportCsv = () => {
+    const params = new URLSearchParams();
+    if (categoryFilter !== 'all') params.set('category', categoryFilter);
+    if (sentimentFilter !== 'all') params.set('sentiment', sentimentFilter);
+    if (severityFilter !== 'all') params.set('severity', severityFilter);
+    if (analysisStatusFilter !== 'all') params.set('analysisStatus', analysisStatusFilter);
+    if (datasetTypeFilter !== 'all') params.set('datasetType', datasetTypeFilter);
+    if (topicFilter.trim()) params.set('topic', topicFilter.trim());
+    if (search.trim()) params.set('search', search.trim());
+    params.set('sortBy', sortBy);
+    params.set('sortOrder', sortOrder);
+
+    const exportUrl = `/api/feedback/export?${params.toString()}`;
+    window.open(exportUrl, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,6 +300,16 @@ export const FeedbackPage: React.FC = () => {
             leftIcon={<RefreshCw className="h-4 w-4" />}
           >
             Refresh Feed
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            leftIcon={<Download className="h-4 w-4" />}
+            title="Export filtered feedback records as CSV"
+          >
+            Export CSV
           </Button>
 
           <Button

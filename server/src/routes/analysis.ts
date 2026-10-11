@@ -15,12 +15,56 @@ router.post('/start', async (req: Request, res: Response) => {
   try {
     const { batchSize, concurrency, rateLimitDelayMs, datasetType, limit } = req.body;
 
+    if (batchSize !== undefined) {
+      const num = Number(batchSize);
+      if (isNaN(num) || num < 1 || num > 100) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'Parameter "batchSize" must be a positive integer between 1 and 100.',
+        });
+        return;
+      }
+    }
+
+    if (concurrency !== undefined) {
+      const num = Number(concurrency);
+      if (isNaN(num) || num < 1 || num > 10) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'Parameter "concurrency" must be a positive integer between 1 and 10.',
+        });
+        return;
+      }
+    }
+
+    if (rateLimitDelayMs !== undefined) {
+      const num = Number(rateLimitDelayMs);
+      if (isNaN(num) || num < 0 || num > 60000) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'Parameter "rateLimitDelayMs" must be a non-negative integer up to 60000ms.',
+        });
+        return;
+      }
+    }
+
+    if (limit !== undefined) {
+      const num = Number(limit);
+      if (isNaN(num) || num < 1) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'Parameter "limit" must be a positive integer greater than or equal to 1.',
+        });
+        return;
+      }
+    }
+
     const run = await pipeline.startRun({
-      batchSize: batchSize ? Number(batchSize) : undefined,
-      concurrency: concurrency ? Number(concurrency) : undefined,
+      batchSize: batchSize !== undefined ? Number(batchSize) : undefined,
+      concurrency: concurrency !== undefined ? Number(concurrency) : undefined,
       rateLimitDelayMs: rateLimitDelayMs !== undefined ? Number(rateLimitDelayMs) : undefined,
       datasetType,
-      limit: limit ? Number(limit) : undefined,
+      limit: limit !== undefined ? Number(limit) : undefined,
     });
 
     res.status(202).json({

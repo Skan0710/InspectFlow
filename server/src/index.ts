@@ -20,9 +20,26 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+const allowedOrigins = [
+  CLIENT_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+
 // Middleware
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -150,11 +167,44 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  console.error('[ServerError]', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: err.message || 'An unexpected error occurred.',
-  });
+  if (err.message === 'Not allowed by CORS') {
+    res.status(403).json({
+      error: 'Forbidden',
+      message: 'Origin not allowed by CORS policy.',
+    });
+    return;
+  }
+
+  if (err.name === 'MulterError') {
+    const multerErr = err as unknown as { code: string };
+    if (multerErr.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({
+        error: 'PayloadTooLarge',
+        message: 'File exceeds maximum upload limit of 50MB.',
+      });
+      return;
+    }
+    res.status(400).json({
+      error: 'UploadError',
+      message: err.message,
+    });
+    return;
+  }
+
+  // Prevent leaking sensitive internal data in production logs and response bodies
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[ServerError] ${err.name}: ${err.message}`);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'An unexpected internal server error occurred.',
+    });
+  } else {
+    console.error('[ServerError]', err);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: err.message || 'An unexpected error occurred.',
+    });
+  }
 });
 
 // Start Server

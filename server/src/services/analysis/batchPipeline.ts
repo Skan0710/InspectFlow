@@ -87,8 +87,8 @@ export class BatchAnalysisPipeline {
       return emptyRun;
     }
 
-    const batchSize = Math.max(1, config.batchSize ?? 10);
-    const concurrency = Math.max(1, Math.min(10, config.concurrency ?? 2));
+    const batchSize = Math.max(1, Math.min(100, config.batchSize ?? 10));
+    const concurrency = Math.max(1, Math.min(5, config.concurrency ?? 2));
     const rateLimitDelayMs = Math.max(0, config.rateLimitDelayMs ?? 100);
 
     const runRecord: AnalysisRunRecord = {

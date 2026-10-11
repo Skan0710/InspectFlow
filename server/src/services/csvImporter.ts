@@ -190,16 +190,19 @@ export async function processCsvImport(
 
       // Flush in streaming chunks to keep memory footprint bounded
       if (currentChunk.length >= CHUNK_SIZE) {
-        await store.saveRecordsChunk(currentChunk);
+        await store.saveRecordsChunk(currentChunk, { skipFlush: true });
         currentChunk = [];
       }
     }
 
     // Flush any remaining records in final chunk
     if (currentChunk.length > 0) {
-      await store.saveRecordsChunk(currentChunk);
+      await store.saveRecordsChunk(currentChunk, { skipFlush: true });
       currentChunk = [];
     }
+
+    // Perform a single disk flush for in-memory fallback now that all chunks are written
+    await store.flushToDisk();
 
     if (summary.failedCount > 0 && summary.importedCount === 0) {
       summary.status = 'failed';
