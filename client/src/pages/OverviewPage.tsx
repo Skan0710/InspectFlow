@@ -1,21 +1,82 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
   ArrowUpRight, 
-  Layers, 
-  CheckCircle2, 
-  Clock, 
-  Building2, 
   MessageSquare,
   Sparkles,
-  TrendingUp,
+  Database,
+  AlertCircle,
+  FileSpreadsheet,
+  CheckCircle2,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
 
+interface DatasetStatus {
+  totalRecords: number;
+  genuineCount: number;
+  sampleCount: number;
+  categories: Record<string, number>;
+  activeDatasetType: 'empty' | 'genuine' | 'sample' | 'mixed';
+  lastImportAt: string | null;
+  analysisStatus: 'not_started' | 'running' | 'completed';
+  hasAnalysisRun: boolean;
+}
+
+interface FeedbackItem {
+  id: string;
+  review: string;
+  category: string;
+  source: string;
+  rowNumber: number;
+  isSample: boolean;
+  datasetType: 'genuine_import' | 'demo_sample';
+  importedAt: string;
+}
+
+const CATEGORY_BADGE_VARIANTS: Record<string, 'indigo' | 'neutral' | 'warning' | 'danger'> = {
+  'Product Feedback': 'indigo',
+  'Customer Service': 'neutral',
+  'Operational Issues': 'warning',
+  'Fraud and Scam': 'danger',
+};
+
 export const OverviewPage: React.FC = () => {
+  const [datasetStatus, setDatasetStatus] = useState<DatasetStatus | null>(null);
+  const [recentRecords, setRecentRecords] = useState<FeedbackItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const loadOverviewData = async () => {
+      setIsLoading(true);
+      try {
+        const [statusRes, recordsRes] = await Promise.all([
+          fetch('/api/dataset/status'),
+          fetch('/api/feedback?pageSize=5'),
+        ]);
+
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setDatasetStatus(statusData);
+        }
+
+        if (recordsRes.ok) {
+          const recordsData = await recordsRes.json();
+          setRecentRecords(recordsData.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load overview data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOverviewData();
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -25,213 +86,241 @@ export const OverviewPage: React.FC = () => {
             Intelligence Overview
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Aggregated cross-channel customer signals, sentiment distribution, and priority triage items.
+            Real customer feedback ingestion status, dataset provenance, and AI pipeline readiness.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
           <Link to="/feedback">
             <Button variant="outline" size="sm" leftIcon={<MessageSquare className="h-4 w-4" />}>
-              Browse Feed
+              Browse Full Feed
             </Button>
           </Link>
-          <Link to="/actions">
-            <Button variant="primary" size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-              New Action Item
+          <Link to="/feedback">
+            <Button variant="primary" size="sm" leftIcon={<FileSpreadsheet className="h-4 w-4" />}>
+              Ingest More Data
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* KPI Stat Cards (Scaffolding Metrics without fake charts) */}
+      {/* Prominent Analysis Status Banner */}
+      <div className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+        <div className="flex items-start sm:items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+          <div>
+            <div className="font-semibold text-amber-950 flex items-center gap-2">
+              <span>AI Analysis Pipeline: Not Yet Executed</span>
+              <span className="rounded bg-amber-200/60 px-2 py-0.2 font-mono text-[10px] text-amber-800">
+                PENDING
+              </span>
+            </div>
+            <p className="text-amber-800 mt-0.5">
+              {datasetStatus?.totalRecords
+                ? `${datasetStatus.totalRecords.toLocaleString()} verbatim customer records are indexed. Sentiment scores and topic clusters will be generated when the analysis pipeline runs.`
+                : 'No customer feedback ingested yet. Seed or import dataset to begin.'}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0">
+          <Badge variant="warning" size="sm" dot>
+            Raw Ingestion Ready
+          </Badge>
+        </div>
+      </div>
+
+      {/* Real Ingestion KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Ingested Feedback */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Total Feedback</span>
-              <MessageSquare className="h-4 w-4 text-slate-400" />
+              <span>Total Feedback Records</span>
+              <Database className="h-4 w-4 text-indigo-500" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              1,482
+              {datasetStatus ? datasetStatus.totalRecords.toLocaleString() : '0'}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-              <Badge variant="indigo" size="sm" dot>
-                +12% this week
-              </Badge>
-              <span>Across 6 integrations</span>
+              {datasetStatus?.activeDatasetType === 'genuine' ? (
+                <Badge variant="indigo" size="sm" dot>
+                  Genuine CSV Dataset
+                </Badge>
+              ) : datasetStatus?.activeDatasetType === 'sample' ? (
+                <Badge variant="warning" size="sm" dot>
+                  Demo Sample Fixture
+                </Badge>
+              ) : datasetStatus?.activeDatasetType === 'mixed' ? (
+                <Badge variant="neutral" size="sm">
+                  {datasetStatus.genuineCount} Genuine + {datasetStatus.sampleCount} Demo
+                </Badge>
+              ) : (
+                <span className="text-slate-400">Awaiting Dataset</span>
+              )}
             </div>
           </CardContent>
         </Card>
 
+        {/* AI Sentiment Status */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Net Sentiment Score</span>
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <span>AI Sentiment Score</span>
+              <Clock className="h-4 w-4 text-slate-400" />
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-700">
-              +68 <span className="text-sm font-normal text-slate-500">/ 100</span>
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-              <Badge variant="success" size="sm">
-                Positive Index
-              </Badge>
-              <span>74% satisfaction rating</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Open Action Items</span>
-              <Clock className="h-4 w-4 text-amber-500" />
-            </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              4
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-              <Badge variant="warning" size="sm" dot>
-                2 High Priority
-              </Badge>
-              <span>Assigned across teams</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Tracked Accounts</span>
-              <Building2 className="h-4 w-4 text-slate-400" />
-            </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              214
+            <div className="mt-2 text-xl font-bold tracking-tight text-slate-400">
+              Awaiting Run
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
               <Badge variant="neutral" size="sm">
-                Enterprise & Mid-Market
+                0 / 100 Analyzed
               </Badge>
+              <span>No fabricated metrics</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Initiatives */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <span>Action Initiatives</span>
+              <Layers className="h-4 w-4 text-slate-400" />
+            </div>
+            <div className="mt-2 text-xl font-bold tracking-tight text-slate-400">
+              0 Active
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+              <Badge variant="neutral" size="sm">
+                Queue Empty
+              </Badge>
+              <span>Awaiting topic extraction</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dataset Provenance */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <span>Dataset Provenance</span>
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </div>
+            <div className="mt-2 text-base font-bold tracking-tight text-slate-900 truncate">
+              {datasetStatus?.activeDatasetType === 'genuine'
+                ? 'BuildBattle 2026'
+                : datasetStatus?.activeDatasetType === 'sample'
+                ? 'Demo Sample (20)'
+                : datasetStatus?.activeDatasetType === 'mixed'
+                ? 'Mixed Repositories'
+                : 'Unseeded'}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+              <span>4 Valid Categories</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Two Column Section: Key Drivers & Recent Feedback Stream */}
+      {/* Two Column Layout: Real Ingested Feedback Stream & Topic Extraction Status */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column (2 spans): Feed Stream Scaffolding */}
+        {/* Left Column (2 spans): Actual Verbatim Customer Records */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
-                <CardTitle>Recent Customer Signals</CardTitle>
-                <CardDescription>Live intake stream from connected support and CRM channels</CardDescription>
+                <CardTitle>Recent Customer Signals Ingested</CardTitle>
+                <CardDescription>
+                  Verbatim customer feedback records parsed and stored without altered scoring
+                </CardDescription>
               </div>
               <Link to="/feedback" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-                View All <ArrowUpRight className="h-3.5 w-3.5" />
+                View All {datasetStatus ? `(${datasetStatus.totalRecords})` : ''} <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </CardHeader>
             <div className="divide-y divide-slate-100 border-t border-slate-100">
-              {[
-                {
-                  account: 'Acme Global Corp',
-                  source: 'Zendesk Ticket #4912',
-                  topic: 'SSO SAML Auto-Provisioning',
-                  sentiment: 'warning',
-                  sentimentLabel: 'Neutral Friction',
-                  time: '12m ago',
-                  excerpt: 'Provisioning fails intermittently for users syncing via Azure AD SCIM connector.',
-                },
-                {
-                  account: 'Stripe Partners',
-                  source: 'G2 Review',
-                  topic: 'Webhook Latency',
-                  sentiment: 'success',
-                  sentimentLabel: 'Positive Feedback',
-                  time: '45m ago',
-                  excerpt: 'The migration to v2 endpoints reduced our telemetry sync delays down to under 200ms.',
-                },
-                {
-                  account: 'Northstar Financial',
-                  source: 'Gong Call Transcript',
-                  topic: 'Role-Based Access Controls',
-                  sentiment: 'danger',
-                  sentimentLabel: 'Negative / Risk',
-                  time: '2h ago',
-                  excerpt: 'Compliance team is requesting granular read-only auditor permissions prior to contract renewal.',
-                },
-              ].map((item, idx) => (
-                <div key={idx} className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900">{item.account}</span>
-                      <span className="text-xs text-slate-400">•</span>
-                      <span className="text-xs text-slate-500 font-mono">{item.source}</span>
-                    </div>
-                    <Badge variant={item.sentiment as 'success' | 'warning' | 'danger'} size="sm" dot>
-                      {item.sentimentLabel}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                    "{item.excerpt}"
-                  </p>
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
-                      Topic: {item.topic}
-                    </span>
-                    <span>{item.time}</span>
-                  </div>
+              {recentRecords.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  {isLoading ? 'Loading records...' : 'No customer records imported yet.'}
                 </div>
-              ))}
+              ) : (
+                recentRecords.map((item) => (
+                  <div key={item.id} className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={CATEGORY_BADGE_VARIANTS[item.category] || 'neutral'}
+                          size="sm"
+                          dot
+                        >
+                          {item.category}
+                        </Badge>
+                        <span className="text-xs text-slate-400 font-mono">Row #{item.rowNumber}</span>
+                      </div>
+                      <Badge
+                        variant={item.isSample ? 'warning' : 'indigo'}
+                        size="sm"
+                      >
+                        {item.isSample ? 'Demo Sample' : 'Genuine Import'}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs sm:text-sm text-slate-800 leading-relaxed font-normal">
+                      "{item.review}"
+                    </p>
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                      <span className="font-mono text-[11px] truncate max-w-xs">{item.source}</span>
+                      <span>{new Date(item.importedAt).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
         </div>
 
-        {/* Right Column: AI Topic Clusters & Focus */}
+        {/* Right Column: AI Analysis Readiness & Category Distribution */}
         <div className="space-y-4">
+          {/* Category Distribution Card */}
           <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 uppercase tracking-wider">
-                <Sparkles className="h-4 w-4" />
-                <span>AI Detected Themes</span>
-              </div>
-              <CardTitle>Emerging Clusters</CardTitle>
-              <CardDescription>Top detected discussion clusters this week</CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Supplied Category Distribution</CardTitle>
+              <CardDescription>Exact count of ingested records by validated category</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              {[
-                { title: 'Billing Line Item Transparency', count: '42 mentions', badge: 'High Urgency', variant: 'danger' as const },
-                { title: 'Audit Log Retention API', count: '28 mentions', badge: 'Compliance', variant: 'warning' as const },
-                { title: 'Export to Parquet Format', count: '19 mentions', badge: 'Feature Request', variant: 'indigo' as const },
-              ].map((theme, i) => (
-                <div key={i} className="rounded-lg border border-slate-200/80 p-3 bg-slate-50/50">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-xs font-semibold text-slate-900">{theme.title}</h4>
-                    <Badge variant={theme.variant} size="sm">
-                      {theme.badge}
-                    </Badge>
+            <CardContent className="space-y-2.5 pt-1">
+              {datasetStatus?.categories && Object.keys(datasetStatus.categories).length > 0 ? (
+                Object.entries(datasetStatus.categories).map(([cat, count]) => (
+                  <div key={cat} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 text-xs border border-slate-100">
+                    <span className="font-medium text-slate-700">{cat}</span>
+                    <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {count.toLocaleString()}
+                    </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-500">{theme.count} cross-channel</p>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-slate-400">Awaiting dataset ingestion.</p>
+              )}
             </CardContent>
           </Card>
 
+          {/* AI Clustering Status Card */}
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Quick Checklist</CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <Sparkles className="h-4 w-4 text-slate-400" />
+                <span>AI Topic Clusters</span>
+              </div>
+              <CardTitle className="text-base">Analysis Pipeline Status</CardTitle>
+              <CardDescription>Semantic topic extraction has not yet been executed</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 text-xs text-slate-600">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                <span>Data pipeline connectors healthy</span>
+            <CardContent className="space-y-3 pt-1 text-xs text-slate-600">
+              <div className="rounded-lg bg-slate-50 p-3 border border-slate-200/80 space-y-1.5">
+                <div className="font-semibold text-slate-800">No Synthesized Topics Yet</div>
+                <p className="text-slate-500 text-[11px] leading-relaxed">
+                  InsightFlow avoids fabricating artificial cluster metrics. Once the LLM clustering pipeline is executed, semantic clusters will populate here with traceable citations.
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                <span>Sentiment analysis model v3.2 active</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-indigo-500 shrink-0" />
-                <span>Weekly digest scheduled for Monday</span>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Raw feedback repository indexed & ready</span>
               </div>
             </CardContent>
           </Card>

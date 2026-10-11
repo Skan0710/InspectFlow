@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { RawFeedbackRecord, ImportSummary } from '../types/import.js';
+import type { RawFeedbackRecord, ImportSummary, DatasetStatus, DatasetOriginType } from '../types/import.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -47,8 +47,12 @@ export class FeedbackStore {
       if (fs.existsSync(RECORDS_FILE)) {
         const data = fs.readFileSync(RECORDS_FILE, 'utf8');
         const list: RawFeedbackRecord[] = JSON.parse(data);
-        this.records = list;
-        for (const rec of list) {
+        this.records = list.map((r) => ({
+          ...r,
+          isSample: Boolean(r.isSample),
+          datasetType: r.datasetType || (r.isSample ? 'demo_sample' : 'genuine_import'),
+        }));
+        for (const rec of this.records) {
           this.recordHashes.add(rec.contentHash);
         }
       }
@@ -100,7 +104,6 @@ export class FeedbackStore {
     if (dbConfig.isConfigured && dbConfig.databaseUrl) {
       try {
         const pool = getPgPool();
-        // Insert chunk in batch
         const values: any[] = [];
         const placeholders: string[] = [];
 
@@ -112,13 +115,15 @@ export class FeedbackStore {
           values.push(
             rec.source,
             rec.contentHash,
-            'BuildBattle Dataset',
+            rec.isSample ? 'Demo Fixture Account' : 'BuildBattle Dataset',
             rec.review,
             JSON.stringify({
               category: rec.category,
               batchId: rec.batchId,
               originalReview: rec.review,
               rowNumber: rec.rowNumber,
+              isSample: rec.isSample,
+              datasetType: rec.datasetType,
             }),
             rec.importedAt
           );
@@ -137,6 +142,49 @@ export class FeedbackStore {
     }
   }
 
+  public async resetStore(scope: 'all' | 'sample_only' | 'genuine_only' = 'all'): Promise<{ removedCount: number }> {
+    let initialCount = this.records.length;
+    let removedCount = 0;
+
+    if (scope === 'all') {
+      removedCount = this.records.length;
+      this.records = [];
+      this.recordHashes.clear();
+      this.batches.clear();
+    } else if (scope === 'sample_only') {
+      const remaining = this.records.filter((r) => !r.isSample);
+      removedCount = initialCount - remaining.length;
+      this.records = remaining;
+      this.recordHashes = new Set(remaining.map((r) => r.contentHash));
+      for (const [id, batch] of this.batches.entries()) {
+        if (batch.isSample) this.batches.delete(id);
+      }
+    } else if (scope === 'genuine_only') {
+      const remaining = this.records.filter((r) => r.isSample);
+      removedCount = initialCount - remaining.length;
+      this.records = remaining;
+      this.recordHashes = new Set(remaining.map((r) => r.contentHash));
+      for (const [id, batch] of this.batches.entries()) {
+        if (!batch.isSample) this.batches.delete(id);
+      }
+    }
+
+    this.flushToDisk();
+
+    // If PostgreSQL configured and resetting all, truncate feedback
+    const dbConfig = getDatabaseConfig();
+    if (scope === 'all' && dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        await pool.query('TRUNCATE TABLE feedback CASCADE;');
+      } catch (err) {
+        console.warn('[FeedbackStore] Failed to truncate DB table:', err);
+      }
+    }
+
+    return { removedCount };
+  }
+
   public getBatches(): ImportSummary[] {
     return Array.from(this.batches.values()).sort(
       (a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime()
@@ -152,10 +200,16 @@ export class FeedbackStore {
     pageSize?: number;
     category?: string;
     search?: string;
+    datasetType?: 'all' | DatasetOriginType;
   }) {
     const page = Math.max(1, params.page || 1);
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25));
     let filtered = this.records;
+
+    // Filter by dataset origin type (distinguish genuine vs demo sample)
+    if (params.datasetType && params.datasetType !== 'all') {
+      filtered = filtered.filter((r) => r.datasetType === params.datasetType);
+    }
 
     if (params.category && params.category !== 'all') {
       const targetCat = params.category.toLowerCase().trim();
@@ -169,7 +223,8 @@ export class FeedbackStore {
       filtered = filtered.filter(
         (r) =>
           r.review.toLowerCase().includes(q) ||
-          r.category.toLowerCase().includes(q)
+          r.category.toLowerCase().includes(q) ||
+          r.source.toLowerCase().includes(q)
       );
     }
 
@@ -185,6 +240,48 @@ export class FeedbackStore {
         total,
         totalPages: Math.ceil(total / pageSize),
       },
+    };
+  }
+
+  public getDatasetStatus(): DatasetStatus {
+    const totalRecords = this.records.length;
+    let genuineCount = 0;
+    let sampleCount = 0;
+    const categories: Record<string, number> = {};
+
+    for (const rec of this.records) {
+      if (rec.isSample) {
+        sampleCount++;
+      } else {
+        genuineCount++;
+      }
+      categories[rec.category] = (categories[rec.category] || 0) + 1;
+    }
+
+    let activeDatasetType: 'empty' | 'genuine' | 'sample' | 'mixed' = 'empty';
+    if (totalRecords === 0) {
+      activeDatasetType = 'empty';
+    } else if (genuineCount > 0 && sampleCount === 0) {
+      activeDatasetType = 'genuine';
+    } else if (sampleCount > 0 && genuineCount === 0) {
+      activeDatasetType = 'sample';
+    } else {
+      activeDatasetType = 'mixed';
+    }
+
+    const batches = this.getBatches();
+    const lastBatch = batches[0] || null;
+
+    return {
+      totalRecords,
+      genuineCount,
+      sampleCount,
+      categories,
+      activeDatasetType,
+      lastImportAt: lastBatch ? lastBatch.importedAt : null,
+      lastBatchId: lastBatch ? lastBatch.batchId : null,
+      analysisStatus: 'not_started',
+      hasAnalysisRun: false,
     };
   }
 

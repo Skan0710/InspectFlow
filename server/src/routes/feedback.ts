@@ -69,6 +69,7 @@ router.post(
         fileName: req.file.originalname,
         fileSizeBytes: req.file.size,
         skipDuplicates,
+        isTemporary: true,
       });
 
       res.status(200).json({

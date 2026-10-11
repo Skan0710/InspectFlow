@@ -4,7 +4,8 @@ import {
   Upload, 
   RefreshCw, 
   FileSpreadsheet, 
-  CheckCircle2
+  CheckCircle2,
+  FlaskConical,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -20,6 +21,8 @@ interface FeedbackItem {
   category: string;
   source: string;
   rowNumber: number;
+  isSample: boolean;
+  datasetType: 'genuine_import' | 'demo_sample';
   importedAt: string;
 }
 
@@ -36,10 +39,12 @@ export const FeedbackPage: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [pageSize] = useState<number>(15);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [datasetTypeFilter, setDatasetTypeFilter] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [lastImportSummary, setLastImportSummary] = useState<ImportSummary | null>(null);
+  const [isSeedingSample, setIsSeedingSample] = useState<boolean>(false);
 
   const fetchFeedback = useCallback(async () => {
     setIsLoading(true);
@@ -51,6 +56,9 @@ export const FeedbackPage: React.FC = () => {
 
       if (categoryFilter !== 'all') {
         params.append('category', categoryFilter);
+      }
+      if (datasetTypeFilter !== 'all') {
+        params.append('datasetType', datasetTypeFilter);
       }
       if (search.trim()) {
         params.append('search', search.trim());
@@ -67,7 +75,7 @@ export const FeedbackPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, categoryFilter, search]);
+  }, [page, pageSize, categoryFilter, datasetTypeFilter, search]);
 
   useEffect(() => {
     fetchFeedback();
@@ -77,6 +85,27 @@ export const FeedbackPage: React.FC = () => {
     setLastImportSummary(summary);
     setPage(1);
     fetchFeedback();
+  };
+
+  const handleSeedSample = async () => {
+    setIsSeedingSample(true);
+    try {
+      const res = await fetch('/api/dataset/seed-sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reset: false }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLastImportSummary(data.summary);
+        setPage(1);
+        fetchFeedback();
+      }
+    } catch (err) {
+      console.error('Failed to seed sample dataset:', err);
+    } finally {
+      setIsSeedingSample(false);
+    }
   };
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
@@ -93,7 +122,18 @@ export const FeedbackPage: React.FC = () => {
             Raw verbatim customer signals and supplied categories ingested via CSV streaming pipeline.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSeedSample}
+            isLoading={isSeedingSample}
+            leftIcon={<FlaskConical className="h-4 w-4 text-amber-600" />}
+            title="Load small 20-row sample dataset for rapid testing"
+          >
+            Load 20 Demo Rows
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -103,6 +143,7 @@ export const FeedbackPage: React.FC = () => {
           >
             Refresh Feed
           </Button>
+
           <Button
             variant="primary"
             size="sm"
@@ -127,6 +168,11 @@ export const FeedbackPage: React.FC = () => {
                 <strong>{lastImportSummary.importedCount.toLocaleString()}</strong> unique records imported,{' '}
                 <strong>{lastImportSummary.skippedCount.toLocaleString()}</strong> duplicate records skipped.
               </span>
+              <span className="ml-2">
+                <Badge variant={lastImportSummary.isSample ? 'warning' : 'indigo'} size="sm">
+                  {lastImportSummary.isSample ? 'Demo Sample' : 'Genuine Import'}
+                </Badge>
+              </span>
             </div>
           </div>
           <span className="font-mono text-[11px] text-indigo-600 bg-white/60 px-2 py-0.5 rounded border border-indigo-200">
@@ -137,7 +183,7 @@ export const FeedbackPage: React.FC = () => {
 
       {/* Filter and Query Toolbar */}
       <Card className="p-4 bg-white">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2">
             <Input
               placeholder="Search verbatim review text or keywords..."
@@ -163,6 +209,19 @@ export const FeedbackPage: React.FC = () => {
             <option value="Fraud and Scam">Fraud and Scam</option>
             <option value="Operational Issues">Operational Issues</option>
           </Select>
+
+          {/* Dataset Provenance Filter */}
+          <Select
+            value={datasetTypeFilter}
+            onChange={(e) => {
+              setDatasetTypeFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All Dataset Types</option>
+            <option value="genuine_import">Genuine Dataset Only</option>
+            <option value="demo_sample">Demo Sample Only</option>
+          </Select>
         </div>
       </Card>
 
@@ -170,8 +229,8 @@ export const FeedbackPage: React.FC = () => {
       {totalCount === 0 && !isLoading ? (
         <EmptyState
           icon={<FileSpreadsheet className="h-6 w-6 text-indigo-600" />}
-          title="No customer feedback imported yet"
-          description="Upload BuildBattle_2026_Customer_Feedback_Dataset.csv to stream, validate, and index customer feedback records."
+          title="No customer feedback found"
+          description="Upload BuildBattle_2026_Customer_Feedback_Dataset.csv or load the quick 20-row demo sample dataset."
           action={
             <Button
               variant="primary"
@@ -180,6 +239,17 @@ export const FeedbackPage: React.FC = () => {
               leftIcon={<Upload className="h-4 w-4" />}
             >
               Ingest Customer Feedback CSV
+            </Button>
+          }
+          secondaryAction={
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleSeedSample}
+              isLoading={isSeedingSample}
+              leftIcon={<FlaskConical className="h-4 w-4 text-amber-600" />}
+            >
+              Load Demo Sample (20 Rows)
             </Button>
           }
         />
@@ -192,7 +262,7 @@ export const FeedbackPage: React.FC = () => {
                   <th className="py-3 px-4 w-16">Row</th>
                   <th className="py-3 px-4">Verbatim Review Text</th>
                   <th className="py-3 px-4 whitespace-nowrap">Supplied Category</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Source Dataset</th>
+                  <th className="py-3 px-4 whitespace-nowrap">Dataset Type</th>
                   <th className="py-3 px-4 whitespace-nowrap text-right">Ingested At</th>
                 </tr>
               </thead>
@@ -216,8 +286,13 @@ export const FeedbackPage: React.FC = () => {
                         {item.category}
                       </Badge>
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">
-                      {item.source}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <Badge
+                        variant={item.isSample ? 'warning' : 'indigo'}
+                        size="sm"
+                      >
+                        {item.isSample ? 'Demo Sample' : 'Genuine Import'}
+                      </Badge>
                     </td>
                     <td className="py-3.5 px-4 text-xs text-slate-400 text-right whitespace-nowrap">
                       {new Date(item.importedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -234,6 +309,7 @@ export const FeedbackPage: React.FC = () => {
               Showing <span className="font-semibold text-slate-800">{items.length}</span> of{' '}
               <span className="font-semibold text-slate-800">{totalCount.toLocaleString()}</span> records
               {categoryFilter !== 'all' && ` in "${categoryFilter}"`}
+              {datasetTypeFilter !== 'all' && ` [${datasetTypeFilter}]`}
             </div>
 
             <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+export type DatasetOriginType = 'genuine_import' | 'demo_sample';
+
 export interface RawFeedbackRecord {
   id: string;
   review: string;
@@ -7,6 +9,8 @@ export interface RawFeedbackRecord {
   rowNumber: number;
   batchId: string;
   importedAt: string;
+  isSample: boolean;
+  datasetType: DatasetOriginType;
 }
 
 export interface ImportRowError {
@@ -28,6 +32,20 @@ export interface ImportSummary {
   errors: ImportRowError[];
   importedAt: string;
   status: 'completed' | 'partial' | 'failed';
+  isSample: boolean;
+  datasetType: DatasetOriginType;
+}
+
+export interface DatasetStatus {
+  totalRecords: number;
+  genuineCount: number;
+  sampleCount: number;
+  categories: Record<string, number>;
+  activeDatasetType: 'empty' | 'genuine' | 'sample' | 'mixed';
+  lastImportAt: string | null;
+  lastBatchId: string | null;
+  analysisStatus: 'not_started' | 'running' | 'completed';
+  hasAnalysisRun: boolean;
 }
 
 export const VALID_CATEGORIES = new Set([

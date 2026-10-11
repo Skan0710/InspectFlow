@@ -5,6 +5,7 @@ import { getDatabaseConfig } from './db/config.js';
 import { checkDatabaseHealth } from './db/health.js';
 import { DatabaseNotConfiguredError } from './db/client.js';
 import feedbackRoutes from './routes/feedback.js';
+import datasetRoutes from './routes/dataset.js';
 
 dotenv.config();
 
@@ -77,6 +78,9 @@ app.get('/api/health/db', async (_req: Request, res: Response) => {
 
 // Customer Feedback and CSV Ingestion Routes
 app.use('/api/feedback', feedbackRoutes);
+
+// Dataset Ingestion Status and Demonstration Seed Routes
+app.use('/api/dataset', datasetRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

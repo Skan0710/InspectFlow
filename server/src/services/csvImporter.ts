@@ -14,6 +14,8 @@ export interface CsvImportOptions {
   fileName: string;
   fileSizeBytes: number;
   skipDuplicates?: boolean;
+  isSample?: boolean;
+  isTemporary?: boolean;
 }
 
 export async function processCsvImport(
@@ -23,6 +25,8 @@ export async function processCsvImport(
   const batchId = `BATCH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const importedAt = new Date().toISOString();
   const skipDuplicates = options.skipDuplicates !== false; // default true
+  const isSample = Boolean(options.isSample);
+  const datasetType = isSample ? 'demo_sample' : 'genuine_import';
 
   const summary: ImportSummary = {
     batchId,
@@ -36,6 +40,8 @@ export async function processCsvImport(
     errors: [],
     importedAt,
     status: 'completed',
+    isSample,
+    datasetType,
   };
 
   const currentBatchHashes = new Set<string>();
@@ -173,6 +179,8 @@ export async function processCsvImport(
         rowNumber,
         batchId,
         importedAt,
+        isSample,
+        datasetType,
       };
 
       currentChunk.push(feedbackRecord);
@@ -206,13 +214,15 @@ export async function processCsvImport(
 
     return summary;
   } finally {
-    // Clean up temporary uploaded file on completion or error
-    try {
-      if (fs.existsSync(options.filePath)) {
-        fs.unlinkSync(options.filePath);
+    // Only clean up temporary uploaded files (e.g. from Multer)
+    if (options.isTemporary) {
+      try {
+        if (fs.existsSync(options.filePath)) {
+          fs.unlinkSync(options.filePath);
+        }
+      } catch (cleanupErr) {
+        console.warn('[CsvImporter] Temporary file cleanup warning:', cleanupErr);
       }
-    } catch (cleanupErr) {
-      console.warn('[CsvImporter] Temporary file cleanup warning:', cleanupErr);
     }
   }
 }

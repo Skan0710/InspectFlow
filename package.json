@@ -11,6 +11,10 @@
     "build:server": "npm run build --prefix server",
     "build:client": "npm run build --prefix client",
     "db:migrate": "npm run db:migrate --prefix server",
+    "seed": "npm run seed --prefix server",
+    "seed:sample": "npm run seed:sample --prefix server",
+    "seed:clean": "npm run seed:clean --prefix server",
+    "test": "npm run test --prefix server",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client"
   },
   "devDependencies": {

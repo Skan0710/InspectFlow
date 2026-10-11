@@ -28,6 +28,8 @@ export interface ImportSummary {
   }>;
   importedAt: string;
   status: 'completed' | 'partial' | 'failed';
+  isSample?: boolean;
+  datasetType?: string;
 }
 
 interface FeedbackImportModalProps {
