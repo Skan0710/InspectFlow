@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RawFeedbackRecord, ImportSummary, DatasetStatus, DatasetOriginType } from '../types/import.js';
 import type { FeedbackAnalysisRecord, AnalysisRunRecord } from './analysis/types.js';
+import type { IssueClusterData, IssueFeedbackLink, ClusteringResult, UnmatchedFeedbackItem } from './clustering/types.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -14,6 +15,9 @@ const BATCHES_FILE = path.join(DATA_DIR, 'batches.json');
 const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
 const ANALYSES_FILE = path.join(DATA_DIR, 'analyses.json');
 const RUNS_FILE = path.join(DATA_DIR, 'analysis_runs.json');
+const ISSUES_FILE = path.join(DATA_DIR, 'issues.json');
+const ISSUE_FEEDBACK_FILE = path.join(DATA_DIR, 'issue_feedback.json');
+const CLUSTERING_RUNS_FILE = path.join(DATA_DIR, 'clustering_runs.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -27,6 +31,9 @@ export class FeedbackStore {
   private records: RawFeedbackRecord[] = [];
   private analyses: Map<string, FeedbackAnalysisRecord> = new Map();
   private analysisRuns: Map<string, AnalysisRunRecord> = new Map();
+  private issues: Map<string, IssueClusterData> = new Map();
+  private issueFeedback: Map<string, IssueFeedbackLink[]> = new Map();
+  private clusteringRuns: ClusteringResult[] = [];
 
   private constructor() {
     this.loadStateFromDisk();
@@ -41,18 +48,27 @@ export class FeedbackStore {
 
   private loadStateFromDisk(): void {
     try {
-      if (fs.existsSync(BATCHES_FILE)) {
-        const data = fs.readFileSync(BATCHES_FILE, 'utf8');
-        const list: ImportSummary[] = JSON.parse(data);
-        for (const item of list) {
+      const safeParse = <T>(filePath: string): T | null => {
+        if (!fs.existsSync(filePath)) return null;
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          if (!content || !content.trim()) return null;
+          return JSON.parse(content) as T;
+        } catch {
+          return null;
+        }
+      };
+
+      const batchesList = safeParse<ImportSummary[]>(BATCHES_FILE);
+      if (batchesList) {
+        for (const item of batchesList) {
           this.batches.set(item.batchId, item);
         }
       }
 
-      if (fs.existsSync(RECORDS_FILE)) {
-        const data = fs.readFileSync(RECORDS_FILE, 'utf8');
-        const list: RawFeedbackRecord[] = JSON.parse(data);
-        this.records = list.map((r) => ({
+      const recordsList = safeParse<RawFeedbackRecord[]>(RECORDS_FILE);
+      if (recordsList) {
+        this.records = recordsList.map((r) => ({
           ...r,
           isSample: Boolean(r.isSample),
           datasetType: r.datasetType || (r.isSample ? 'demo_sample' : 'genuine_import'),
@@ -62,20 +78,40 @@ export class FeedbackStore {
         }
       }
 
-      if (fs.existsSync(ANALYSES_FILE)) {
-        const data = fs.readFileSync(ANALYSES_FILE, 'utf8');
-        const list: FeedbackAnalysisRecord[] = JSON.parse(data);
-        for (const item of list) {
+      const analysesList = safeParse<FeedbackAnalysisRecord[]>(ANALYSES_FILE);
+      if (analysesList) {
+        for (const item of analysesList) {
           this.analyses.set(item.feedbackId, item);
         }
       }
 
-      if (fs.existsSync(RUNS_FILE)) {
-        const data = fs.readFileSync(RUNS_FILE, 'utf8');
-        const list: AnalysisRunRecord[] = JSON.parse(data);
-        for (const item of list) {
+      const runsList = safeParse<AnalysisRunRecord[]>(RUNS_FILE);
+      if (runsList) {
+        for (const item of runsList) {
           this.analysisRuns.set(item.id, item);
         }
+      }
+
+      const issuesList = safeParse<IssueClusterData[]>(ISSUES_FILE);
+      if (issuesList) {
+        for (const item of issuesList) {
+          this.issues.set(item.id, item);
+        }
+      }
+
+      const linksList = safeParse<IssueFeedbackLink[]>(ISSUE_FEEDBACK_FILE);
+      if (linksList) {
+        this.issueFeedback.clear();
+        for (const item of linksList) {
+          const arr = this.issueFeedback.get(item.issueId) || [];
+          arr.push(item);
+          this.issueFeedback.set(item.issueId, arr);
+        }
+      }
+
+      const clusteringRunsList = safeParse<ClusteringResult[]>(CLUSTERING_RUNS_FILE);
+      if (clusteringRunsList) {
+        this.clusteringRuns = clusteringRunsList;
       }
     } catch (err) {
       console.warn('[FeedbackStore] Failed to load state from disk:', err);
@@ -105,6 +141,25 @@ export class FeedbackStore {
       fs.writeFileSync(
         RUNS_FILE,
         JSON.stringify(Array.from(this.analysisRuns.values()), null, 2),
+        'utf8'
+      );
+      fs.writeFileSync(
+        ISSUES_FILE,
+        JSON.stringify(Array.from(this.issues.values()), null, 2),
+        'utf8'
+      );
+      const allLinks: IssueFeedbackLink[] = [];
+      for (const links of this.issueFeedback.values()) {
+        allLinks.push(...links);
+      }
+      fs.writeFileSync(
+        ISSUE_FEEDBACK_FILE,
+        JSON.stringify(allLinks, null, 2),
+        'utf8'
+      );
+      fs.writeFileSync(
+        CLUSTERING_RUNS_FILE,
+        JSON.stringify(this.clusteringRuns, null, 2),
         'utf8'
       );
     } catch (err) {
@@ -312,6 +367,9 @@ export class FeedbackStore {
       this.batches.clear();
       this.analyses.clear();
       this.analysisRuns.clear();
+      this.issues.clear();
+      this.issueFeedback.clear();
+      this.clusteringRuns = [];
     } else if (scope === 'sample_only') {
       const remaining = this.records.filter((r) => !r.isSample);
       removedCount = initialCount - remaining.length;
@@ -332,11 +390,13 @@ export class FeedbackStore {
 
     this.flushToDisk();
 
-    // If PostgreSQL configured and resetting all, truncate feedback, feedback_analysis, analysis_runs
+    // If PostgreSQL configured and resetting all, truncate tables
     const dbConfig = getDatabaseConfig();
     if (scope === 'all' && dbConfig.isConfigured && dbConfig.databaseUrl) {
       try {
         const pool = getPgPool();
+        await pool.query('TRUNCATE TABLE issue_feedback CASCADE;');
+        await pool.query('TRUNCATE TABLE issues CASCADE;');
         await pool.query('TRUNCATE TABLE feedback_analysis CASCADE;');
         await pool.query('TRUNCATE TABLE analysis_runs CASCADE;');
         await pool.query('TRUNCATE TABLE feedback CASCADE;');
@@ -454,5 +514,168 @@ export class FeedbackStore {
 
   public getTotalRecordsCount(): number {
     return this.records.length;
+  }
+
+  public async saveClustersAndLinks(
+    result: ClusteringResult,
+    links: IssueFeedbackLink[]
+  ): Promise<void> {
+    this.clusteringRuns.unshift(result);
+    if (this.clusteringRuns.length > 10) {
+      this.clusteringRuns = this.clusteringRuns.slice(0, 10);
+    }
+
+    for (const cluster of result.clusters) {
+      this.issues.set(cluster.id, cluster);
+    }
+
+    for (const link of links) {
+      const arr = this.issueFeedback.get(link.issueId) || [];
+      arr.push(link);
+      this.issueFeedback.set(link.issueId, arr);
+    }
+
+    this.flushToDisk();
+
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        for (const cluster of result.clusters) {
+          const sqlIssue = `
+            INSERT INTO issues (
+              id, issue_code, title, description, status, priority, category, impact_summary, metadata, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT (id) DO UPDATE SET
+              title = EXCLUDED.title,
+              description = EXCLUDED.description,
+              status = EXCLUDED.status,
+              priority = EXCLUDED.priority,
+              category = EXCLUDED.category,
+              impact_summary = EXCLUDED.impact_summary,
+              metadata = EXCLUDED.metadata,
+              updated_at = EXCLUDED.updated_at;
+          `;
+          await pool.query(sqlIssue, [
+            cluster.id,
+            cluster.issueCode,
+            cluster.title,
+            cluster.description,
+            cluster.status,
+            cluster.priority,
+            cluster.category,
+            cluster.impactSummary,
+            JSON.stringify(cluster.metadata),
+            cluster.createdAt,
+            cluster.updatedAt,
+          ]);
+        }
+
+        if (links.length > 0) {
+          const chunkSize = 200;
+          for (let i = 0; i < links.length; i += chunkSize) {
+            const chunk = links.slice(i, i + chunkSize);
+            const placeholders: string[] = [];
+            const values: any[] = [];
+            chunk.forEach((l, idx) => {
+              const base = idx * 6;
+              placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
+              values.push(l.id, l.issueId, l.feedbackId, l.relevanceScore, l.citationQuote, l.addedBy);
+            });
+            const sqlLinks = `
+              INSERT INTO issue_feedback (id, issue_id, feedback_id, relevance_score, citation_quote, added_by)
+              VALUES ${placeholders.join(', ')}
+              ON CONFLICT (issue_id, feedback_id) DO UPDATE SET
+                relevance_score = EXCLUDED.relevance_score,
+                citation_quote = EXCLUDED.citation_quote;
+            `;
+            await pool.query(sqlLinks, values);
+          }
+        }
+      } catch (err) {
+        console.warn('[FeedbackStore] DB persistence for clusters skipped/failed:', err);
+      }
+    }
+  }
+
+  public getAllIssues(params?: {
+    category?: string;
+    priority?: string;
+    search?: string;
+  }): IssueClusterData[] {
+    let list = Array.from(this.issues.values());
+
+    if (params?.category && params.category !== 'all') {
+      const cat = params.category.toLowerCase().trim();
+      list = list.filter((c) => c.category.toLowerCase().trim() === cat);
+    }
+
+    if (params?.priority && params.priority !== 'all') {
+      const prio = params.priority.toLowerCase().trim();
+      list = list.filter((c) => c.priority.toLowerCase().trim() === prio);
+    }
+
+    if (params?.search && params.search.trim()) {
+      const q = params.search.toLowerCase().trim();
+      list = list.filter(
+        (c) =>
+          c.title.toLowerCase().includes(q) ||
+          c.description.toLowerCase().includes(q) ||
+          c.issueCode.toLowerCase().includes(q) ||
+          c.category.toLowerCase().includes(q)
+      );
+    }
+
+    return list.sort((a, b) => b.feedbackCount - a.feedbackCount);
+  }
+
+  public getIssueById(id: string): IssueClusterData | null {
+    return this.issues.get(id) || null;
+  }
+
+  public getIssueFeedbackLinks(issueId: string): IssueFeedbackLink[] {
+    return this.issueFeedback.get(issueId) || [];
+  }
+
+  public getFeedbackForIssue(issueId: string) {
+    const issue = this.issues.get(issueId);
+    if (!issue) return [];
+
+    const links = this.issueFeedback.get(issueId) || [];
+    const linkMap = new Map<string, IssueFeedbackLink>();
+    for (const l of links) {
+      linkMap.set(l.feedbackId, l);
+    }
+
+    const results = [];
+    for (const fbId of issue.memberFeedbackIds) {
+      const feedback = this.getRecordById(fbId);
+      if (feedback) {
+        const link = linkMap.get(fbId) || {
+          id: fbId,
+          issueId,
+          feedbackId: fbId,
+          relevanceScore: 0.85,
+          citationQuote: '',
+          addedBy: 'ai_clustering',
+          createdAt: feedback.importedAt,
+        };
+        const analysis = this.getAnalysisByFeedbackId(fbId);
+        results.push({
+          feedback,
+          link,
+          analysis,
+        });
+      }
+    }
+    return results;
+  }
+
+  public getLatestClusteringResult(): ClusteringResult | null {
+    return this.clusteringRuns[0] || null;
+  }
+
+  public getAllClusteringRuns(): ClusteringResult[] {
+    return this.clusteringRuns;
   }
 }

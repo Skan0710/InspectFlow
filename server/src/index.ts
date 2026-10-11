@@ -8,6 +8,7 @@ import { getAIStatus } from './services/ai/index.js';
 import feedbackRoutes from './routes/feedback.js';
 import datasetRoutes from './routes/dataset.js';
 import analysisRoutes from './routes/analysis.js';
+import clusterRoutes from './routes/clusters.js';
 
 dotenv.config();
 
@@ -110,6 +111,9 @@ app.use('/api/dataset', datasetRoutes);
 
 // Batch Feedback Analysis Pipeline Routes
 app.use('/api/analysis', analysisRoutes);
+
+// Issue Clustering Routes
+app.use('/api/clusters', clusterRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
