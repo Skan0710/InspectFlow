@@ -7,6 +7,7 @@ export interface FeedbackAnalysisInput {
   review: string;
   category?: string;
   source?: string;
+  analysisRunId?: string;
 }
 
 /**
@@ -49,6 +50,7 @@ export interface FeedbackAnalysisResult {
 export interface FeedbackAnalysisRecord {
   id: string;
   feedbackId: string;
+  analysisRunId?: string;
   sentiment: FeedbackSentiment;
   sentimentScore: number;
   urgency: UrgencyLevel;
@@ -65,3 +67,42 @@ export interface FeedbackAnalysisRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+export type AnalysisRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface FailedRecordDetail {
+  feedbackId: string;
+  rowNumber?: number;
+  category?: string;
+  reviewSnippet?: string;
+  error: string;
+  failedAt: string;
+}
+
+export interface AnalysisRunConfig {
+  batchSize?: number;
+  concurrency?: number;
+  rateLimitDelayMs?: number;
+  datasetType?: 'all' | 'genuine_import' | 'demo_sample';
+  limit?: number;
+}
+
+export interface AnalysisRunRecord {
+  id: string;
+  runType: string;
+  status: AnalysisRunStatus;
+  itemsTotal: number;
+  itemsQueued: number;
+  itemsProcessing: number;
+  itemsCompleted: number;
+  itemsFailed: number;
+  failedRecords: FailedRecordDetail[];
+  modelName: string;
+  startedAt: string;
+  completedAt?: string;
+  executionDurationMs?: number;
+  parameters: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+

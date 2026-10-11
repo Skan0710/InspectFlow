@@ -14,6 +14,7 @@ import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { FeedbackImportModal, type ImportSummary } from '../components/feedback/FeedbackImportModal';
+import { AnalysisProgressCard } from '../components/feedback/AnalysisProgressCard';
 
 interface FeedbackItem {
   id: string;
@@ -180,6 +181,9 @@ export const FeedbackPage: React.FC = () => {
           </span>
         </div>
       )}
+
+      {/* Batch Analysis Pipeline Progress Component */}
+      <AnalysisProgressCard onAnalysisComplete={fetchFeedback} />
 
       {/* Filter and Query Toolbar */}
       <Card className="p-4 bg-white">

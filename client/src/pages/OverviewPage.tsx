@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Link } from 'react-router-dom';
+import { AnalysisProgressCard } from '../components/feedback/AnalysisProgressCard';
 
 interface DatasetStatus {
   totalRecords: number;
@@ -127,6 +128,9 @@ export const OverviewPage: React.FC = () => {
           </Badge>
         </div>
       </div>
+
+      {/* Batch Analysis Progress Pipeline Card */}
+      <AnalysisProgressCard />
 
       {/* Real Ingestion KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

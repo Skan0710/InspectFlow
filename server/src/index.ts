@@ -7,6 +7,7 @@ import { DatabaseNotConfiguredError } from './db/client.js';
 import { getAIStatus } from './services/ai/index.js';
 import feedbackRoutes from './routes/feedback.js';
 import datasetRoutes from './routes/dataset.js';
+import analysisRoutes from './routes/analysis.js';
 
 dotenv.config();
 
@@ -106,6 +107,9 @@ app.use('/api/feedback', feedbackRoutes);
 
 // Dataset Ingestion Status and Demonstration Seed Routes
 app.use('/api/dataset', datasetRoutes);
+
+// Batch Feedback Analysis Pipeline Routes
+app.use('/api/analysis', analysisRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

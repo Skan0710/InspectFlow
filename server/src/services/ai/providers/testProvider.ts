@@ -17,8 +17,7 @@ export class TestAIProvider extends BaseAIProvider {
   public readonly name = 'test';
   public readonly model: string;
 
-  private responseQueue: string[] = [];
-  private errorQueue: Error[] = [];
+  private actionQueue: Array<{ type: 'response'; data: string } | { type: 'error'; error: Error }> = [];
   private recordedRequests: AICompletionRequest[] = [];
   private defaultResponse: string;
   private simulatedDelayMs: number;
@@ -39,7 +38,13 @@ export class TestAIProvider extends BaseAIProvider {
         urgency: 'high',
         urgency_score: 0.85,
         primary_category: 'Product Feedback',
+        primary_topic: 'Service Timeout',
         topics: ['latency', 'timeout'],
+        secondary_topics: ['latency', 'timeout'],
+        severity: 3,
+        confidence: 0.85,
+        explanation: 'Customer reports severe dashboard latency and request timeouts.',
+        evidence_phrases: ['dashboard latency and request timeouts'],
         summary: 'Customer reports severe dashboard latency and request timeouts.',
       });
     }
@@ -53,11 +58,10 @@ export class TestAIProvider extends BaseAIProvider {
    * Enqueues a scripted response to be returned on the next call
    */
   public enqueueResponse(response: string | Record<string, unknown>): this {
-    if (typeof response === 'object' && response !== null) {
-      this.responseQueue.push(JSON.stringify(response));
-    } else {
-      this.responseQueue.push(response);
-    }
+    const data = typeof response === 'object' && response !== null
+      ? JSON.stringify(response)
+      : response;
+    this.actionQueue.push({ type: 'response', data });
     return this;
   }
 
@@ -65,7 +69,7 @@ export class TestAIProvider extends BaseAIProvider {
    * Enqueues an error to be thrown on the next call (useful for simulating 429 rate limits, timeouts)
    */
   public enqueueError(error: Error): this {
-    this.errorQueue.push(error);
+    this.actionQueue.push({ type: 'error', error });
     return this;
   }
 
@@ -88,8 +92,7 @@ export class TestAIProvider extends BaseAIProvider {
    * Clears state queues and recorded history
    */
   public reset(): void {
-    this.responseQueue = [];
-    this.errorQueue = [];
+    this.actionQueue = [];
     this.recordedRequests = [];
     this.simulatedDelayMs = 0;
   }
@@ -111,16 +114,14 @@ export class TestAIProvider extends BaseAIProvider {
           await sleep(this.simulatedDelayMs, signal);
         }
 
-        // Check error queue
-        if (this.errorQueue.length > 0) {
-          const errorToThrow = this.errorQueue.shift()!;
-          throw errorToThrow;
-        }
-
-        // Determine response content
+        // Process next scripted action in sequential FIFO order
         let content = this.defaultResponse;
-        if (this.responseQueue.length > 0) {
-          content = this.responseQueue.shift()!;
+        if (this.actionQueue.length > 0) {
+          const nextAction = this.actionQueue.shift()!;
+          if (nextAction.type === 'error') {
+            throw nextAction.error;
+          }
+          content = nextAction.data;
         }
 
         const latencyMs = Math.round(performance.now() - startTime);

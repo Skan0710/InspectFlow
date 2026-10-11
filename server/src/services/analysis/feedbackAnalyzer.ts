@@ -81,6 +81,7 @@ export class FeedbackAnalyzer {
     const record: FeedbackAnalysisRecord = {
       id: crypto.randomUUID(),
       feedbackId: result.feedbackId,
+      analysisRunId: input.analysisRunId,
       sentiment: result.sentiment,
       sentimentScore: result.sentimentScore,
       urgency: result.urgency,
