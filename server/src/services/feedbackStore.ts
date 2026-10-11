@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RawFeedbackRecord, ImportSummary, DatasetStatus, DatasetOriginType } from '../types/import.js';
+import type { FeedbackAnalysisRecord } from './analysis/types.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -11,6 +12,7 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.resolve(__dirname, '../../data/imports');
 const BATCHES_FILE = path.join(DATA_DIR, 'batches.json');
 const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
+const ANALYSES_FILE = path.join(DATA_DIR, 'analyses.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -22,6 +24,7 @@ export class FeedbackStore {
   private batches: Map<string, ImportSummary> = new Map();
   private recordHashes: Set<string> = new Set();
   private records: RawFeedbackRecord[] = [];
+  private analyses: Map<string, FeedbackAnalysisRecord> = new Map();
 
   private constructor() {
     this.loadStateFromDisk();
@@ -56,6 +59,14 @@ export class FeedbackStore {
           this.recordHashes.add(rec.contentHash);
         }
       }
+
+      if (fs.existsSync(ANALYSES_FILE)) {
+        const data = fs.readFileSync(ANALYSES_FILE, 'utf8');
+        const list: FeedbackAnalysisRecord[] = JSON.parse(data);
+        for (const item of list) {
+          this.analyses.set(item.feedbackId, item);
+        }
+      }
     } catch (err) {
       console.warn('[FeedbackStore] Failed to load state from disk:', err);
     }
@@ -76,6 +87,11 @@ export class FeedbackStore {
         JSON.stringify(this.records, null, 2),
         'utf8'
       );
+      fs.writeFileSync(
+        ANALYSES_FILE,
+        JSON.stringify(Array.from(this.analyses.values()), null, 2),
+        'utf8'
+      );
     } catch (err) {
       console.error('[FeedbackStore] Failed to persist data to disk:', err);
     }
@@ -83,6 +99,65 @@ export class FeedbackStore {
 
   public hasContentHash(hash: string): boolean {
     return this.recordHashes.has(hash);
+  }
+
+  public getRecordById(id: string): RawFeedbackRecord | null {
+    return this.records.find((r) => r.id === id) || null;
+  }
+
+  public async saveAnalysis(record: FeedbackAnalysisRecord): Promise<void> {
+    this.analyses.set(record.feedbackId, record);
+    this.flushToDisk();
+
+    // If PostgreSQL configured, write to feedback_analysis table
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        const sql = `
+          INSERT INTO feedback_analysis (
+            id, feedback_id, sentiment, sentiment_score, urgency, urgency_score,
+            primary_topic, topics, key_phrases, summary, model_version, confidence_score, analyzed_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          ON CONFLICT (feedback_id, model_version) DO UPDATE SET
+            sentiment = EXCLUDED.sentiment,
+            sentiment_score = EXCLUDED.sentiment_score,
+            urgency = EXCLUDED.urgency,
+            urgency_score = EXCLUDED.urgency_score,
+            primary_topic = EXCLUDED.primary_topic,
+            topics = EXCLUDED.topics,
+            key_phrases = EXCLUDED.key_phrases,
+            summary = EXCLUDED.summary,
+            confidence_score = EXCLUDED.confidence_score,
+            analyzed_at = EXCLUDED.analyzed_at;
+        `;
+        await pool.query(sql, [
+          record.id,
+          record.feedbackId,
+          record.sentiment,
+          record.sentimentScore,
+          record.urgency,
+          record.urgencyScore,
+          record.primaryTopic,
+          JSON.stringify(record.topics),
+          JSON.stringify(record.keyPhrases),
+          record.summary,
+          record.modelVersion,
+          record.confidenceScore,
+          record.analyzedAt,
+        ]);
+      } catch (err) {
+        console.warn('[FeedbackStore] DB persistence for analysis skipped/failed:', err);
+      }
+    }
+  }
+
+  public getAnalysisByFeedbackId(feedbackId: string): FeedbackAnalysisRecord | null {
+    return this.analyses.get(feedbackId) || null;
+  }
+
+  public getAllAnalyses(): FeedbackAnalysisRecord[] {
+    return Array.from(this.analyses.values());
   }
 
   public async saveBatchRecord(summary: ImportSummary): Promise<void> {
@@ -151,6 +226,7 @@ export class FeedbackStore {
       this.records = [];
       this.recordHashes.clear();
       this.batches.clear();
+      this.analyses.clear();
     } else if (scope === 'sample_only') {
       const remaining = this.records.filter((r) => !r.isSample);
       removedCount = initialCount - remaining.length;
@@ -171,11 +247,12 @@ export class FeedbackStore {
 
     this.flushToDisk();
 
-    // If PostgreSQL configured and resetting all, truncate feedback
+    // If PostgreSQL configured and resetting all, truncate feedback and feedback_analysis
     const dbConfig = getDatabaseConfig();
     if (scope === 'all' && dbConfig.isConfigured && dbConfig.databaseUrl) {
       try {
         const pool = getPgPool();
+        await pool.query('TRUNCATE TABLE feedback_analysis CASCADE;');
         await pool.query('TRUNCATE TABLE feedback CASCADE;');
       } catch (err) {
         console.warn('[FeedbackStore] Failed to truncate DB table:', err);
@@ -271,6 +348,10 @@ export class FeedbackStore {
 
     const batches = this.getBatches();
     const lastBatch = batches[0] || null;
+    const hasAnalysisRun = this.analyses.size > 0;
+    const analysisStatus = hasAnalysisRun
+      ? (this.analyses.size >= totalRecords && totalRecords > 0 ? 'completed' : 'running')
+      : 'not_started';
 
     return {
       totalRecords,
@@ -280,8 +361,8 @@ export class FeedbackStore {
       activeDatasetType,
       lastImportAt: lastBatch ? lastBatch.importedAt : null,
       lastBatchId: lastBatch ? lastBatch.batchId : null,
-      analysisStatus: 'not_started',
-      hasAnalysisRun: false,
+      analysisStatus,
+      hasAnalysisRun,
     };
   }
 

@@ -126,14 +126,88 @@ router.get('/', (req: Request, res: Response) => {
   const category = req.query.category as string | undefined;
   const search = req.query.search as string | undefined;
 
+  const datasetType = req.query.datasetType as any;
+
   const result = store.getRecords({
     page,
     pageSize,
     category,
     search,
+    datasetType,
   });
 
-  res.status(200).json(result);
+  // Attach analysis to records if present
+  const dataWithAnalysis = result.data.map((r) => ({
+    ...r,
+    analysis: store.getAnalysisByFeedbackId(r.id),
+  }));
+
+  res.status(200).json({
+    ...result,
+    data: dataWithAnalysis,
+  });
+});
+
+/**
+ * POST /api/feedback/:id/analyze
+ * Analyzes a specific customer review using the AI provider and saves the result in feedback_analysis.
+ * The original feedback record is NEVER altered or mutated.
+ */
+router.post('/:id/analyze', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const feedbackRecord = store.getRecordById(req.params.id);
+    if (!feedbackRecord) {
+      res.status(404).json({
+        error: 'NotFound',
+        message: `Feedback record with ID "${req.params.id}" not found.`,
+      });
+      return;
+    }
+
+    const { FeedbackAnalyzer } = await import('../services/analysis/feedbackAnalyzer.js');
+    const analyzer = new FeedbackAnalyzer();
+
+    const analysis = await analyzer.analyzeAndStore({
+      feedbackId: feedbackRecord.id,
+      review: feedbackRecord.review,
+      category: feedbackRecord.category,
+      source: feedbackRecord.source,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: analysis,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/feedback/:id/analysis
+ * Retrieves existing structured analysis for a given feedback item.
+ */
+router.get('/:id/analysis', (req: Request, res: Response) => {
+  const feedbackRecord = store.getRecordById(req.params.id);
+  if (!feedbackRecord) {
+    res.status(404).json({
+      error: 'NotFound',
+      message: `Feedback record with ID "${req.params.id}" not found.`,
+    });
+    return;
+  }
+
+  const analysis = store.getAnalysisByFeedbackId(req.params.id);
+  if (!analysis) {
+    res.status(404).json({
+      error: 'NotAnalyzed',
+      message: `Analysis has not yet run for feedback record "${req.params.id}".`,
+      feedbackId: req.params.id,
+    });
+    return;
+  }
+
+  res.status(200).json({ data: analysis });
 });
 
 export default router;
