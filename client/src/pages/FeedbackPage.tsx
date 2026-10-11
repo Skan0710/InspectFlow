@@ -12,6 +12,7 @@ import {
   ArrowDown,
   X,
   ChevronRight,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -20,6 +21,7 @@ import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { FeedbackImportModal, type ImportSummary } from '../components/feedback/FeedbackImportModal';
+import { ManualFeedbackModal } from '../components/feedback/ManualFeedbackModal';
 import { AnalysisProgressCard } from '../components/feedback/AnalysisProgressCard';
 import { FeedbackDetailDrawer, type FeedbackDetailItem } from '../components/feedback/FeedbackDetailDrawer';
 
@@ -28,6 +30,7 @@ const CATEGORY_BADGE_VARIANTS: Record<string, 'indigo' | 'neutral' | 'warning' |
   'Customer Service': 'neutral',
   'Operational Issues': 'warning',
   'Fraud and Scam': 'danger',
+  'General Feedback': 'neutral',
 };
 
 const SENTIMENT_BADGE_VARIANTS: Record<string, 'success' | 'neutral' | 'danger' | 'warning'> = {
@@ -78,6 +81,8 @@ export const FeedbackPage: React.FC = () => {
   // UI States
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
+  const [lastSubmittedRecord, setLastSubmittedRecord] = useState<FeedbackDetailItem | null>(null);
   const [lastImportSummary, setLastImportSummary] = useState<ImportSummary | null>(null);
   const [isSeedingSample, setIsSeedingSample] = useState<boolean>(false);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackDetailItem | null>(null);
@@ -214,6 +219,17 @@ export const FeedbackPage: React.FC = () => {
     );
   };
 
+  const handleManualSubmitSuccess = (newRecord: FeedbackDetailItem) => {
+    setLastSubmittedRecord(newRecord);
+    setSortBy('importedAt');
+    setSortOrder('desc');
+    setPage(1);
+    fetchFeedback();
+    if (newRecord) {
+      setSelectedFeedback(newRecord);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
   const hasActiveFilters =
     categoryFilter !== 'all' ||
@@ -270,6 +286,15 @@ export const FeedbackPage: React.FC = () => {
           </Button>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsManualModalOpen(true)}
+            leftIcon={<MessageSquarePlus className="h-4 w-4 text-indigo-600" />}
+          >
+            Submit Feedback
+          </Button>
+
+          <Button
             variant="primary"
             size="sm"
             onClick={() => setIsImportModalOpen(true)}
@@ -279,6 +304,44 @@ export const FeedbackPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Latest Submitted Feedback Notification Banner */}
+      {lastSubmittedRecord && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-900 animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            <div>
+              <span className="font-bold">Manual Feedback Recorded: </span>
+              <span className="italic">
+                "{lastSubmittedRecord.review.length > 70
+                  ? `${lastSubmittedRecord.review.slice(0, 70)}...`
+                  : lastSubmittedRecord.review}"
+              </span>
+              <span className="ml-2 font-mono text-[11px] text-emerald-700">[{lastSubmittedRecord.id}]</span>
+              <Badge variant="success" size="sm" className="ml-2">
+                {lastSubmittedRecord.analysis ? 'AI Analyzed' : 'Pending Analysis'}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedFeedback(lastSubmittedRecord)}
+              className="text-emerald-800 border-emerald-300 hover:bg-emerald-100/60"
+            >
+              Inspect Details
+            </Button>
+            <button
+              onClick={() => setLastSubmittedRecord(null)}
+              className="p-1 text-emerald-500 hover:text-emerald-700 transition-colors"
+              aria-label="Dismiss banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Latest Batch Notification Banner */}
       {lastImportSummary && (
@@ -508,14 +571,24 @@ export const FeedbackPage: React.FC = () => {
                 Clear All Filters
               </Button>
             ) : (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setIsImportModalOpen(true)}
-                leftIcon={<Upload className="h-4 w-4" />}
-              >
-                Ingest Feedback CSV
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setIsManualModalOpen(true)}
+                  leftIcon={<MessageSquarePlus className="h-4 w-4 text-indigo-600" />}
+                >
+                  Submit Feedback
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setIsImportModalOpen(true)}
+                  leftIcon={<Upload className="h-4 w-4" />}
+                >
+                  Ingest Feedback CSV
+                </Button>
+              </div>
             )
           }
         />
@@ -814,6 +887,13 @@ export const FeedbackPage: React.FC = () => {
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={handleImportSuccess}
         onStartAnalysis={handleStartAnalysisFromImport}
+      />
+
+      {/* Manual Feedback Submission Modal */}
+      <ManualFeedbackModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        onSubmitSuccess={handleManualSubmitSuccess}
       />
 
       {/* Verbatim Feedback Review Detail Drawer */}

@@ -3,6 +3,9 @@ import multer from 'multer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import crypto from 'node:crypto';
+import type { RawFeedbackRecord } from '../types/import.js';
+import type { FeedbackAnalysisRecord } from '../services/analysis/types.js';
 import { processCsvImport } from '../services/csvImporter.js';
 import { FeedbackStore } from '../services/feedbackStore.js';
 
@@ -146,6 +149,155 @@ router.get('/stats', async (req: Request, res: Response) => {
   const metrics = await analyticsService.getMetrics(filters);
   res.status(200).json(metrics);
 });
+
+export const ALLOWED_MANUAL_CATEGORIES = new Set([
+  'Product Feedback',
+  'Customer Service',
+  'Fraud and Scam',
+  'Operational Issues',
+  'General Feedback',
+]);
+
+/**
+ * POST /api/feedback
+ * POST /api/feedback/submit
+ * Manual feedback submission endpoint.
+ * Validates review text and optional category, prevents accidental duplicates,
+ * persists record using existing feedback store & model, and queues/executes AI analysis.
+ */
+async function handleManualFeedbackSubmission(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { review: rawReview, category: rawCategory } = req.body || {};
+
+    // 1. Validate review text
+    if (rawReview === undefined || rawReview === null || typeof rawReview !== 'string') {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Review text is required and must be a string.',
+      });
+      return;
+    }
+
+    const review = rawReview.trim();
+    if (review.length < 5) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Review text must be at least 5 characters long.',
+      });
+      return;
+    }
+
+    if (review.length > 2000) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Review text exceeds maximum allowed length of 2000 characters.',
+      });
+      return;
+    }
+
+    // 2. Validate optional category (defaults to 'General Feedback' if not provided)
+    let category = 'General Feedback';
+    if (rawCategory !== undefined && rawCategory !== null && String(rawCategory).trim() !== '') {
+      const trimmedCategory = String(rawCategory).trim();
+      if (!ALLOWED_MANUAL_CATEGORIES.has(trimmedCategory)) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: `Invalid category "${trimmedCategory}". Must be one of: ${Array.from(
+            ALLOWED_MANUAL_CATEGORIES
+          ).join(', ')}.`,
+        });
+        return;
+      }
+      category = trimmedCategory;
+    }
+
+    // 3. Prevent accidental duplicate submissions
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(`${review.toLowerCase()}:::${category.toLowerCase()}`)
+      .digest('hex');
+
+    if (store.hasContentHash(contentHash)) {
+      res.status(409).json({
+        error: 'DuplicateFeedbackError',
+        message: 'A feedback record with identical content already exists. Accidental duplicate submission prevented.',
+        contentHash,
+      });
+      return;
+    }
+
+    // 4. Persistence using existing feedback model
+    // Original review text is strictly preserved
+    const now = new Date().toISOString();
+    const id = `fb-man-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+    const record: RawFeedbackRecord = {
+      id,
+      review, // Exact verbatim text preserved
+      category,
+      contentHash,
+      source: 'Manual Submission',
+      rowNumber: store.getTotalRecordsCount() + 1,
+      batchId: `MANUAL-${now.slice(0, 10)}`,
+      importedAt: now,
+      isSample: false,
+      datasetType: 'genuine_import',
+    };
+
+    // Safely persist to feedback store and database
+    await store.saveRecordsChunk([record]);
+
+    // 5. Automatic queueing / execution for analysis pipeline
+    // Separate submission and analysis statuses
+    let analysisStatus: 'analyzed' | 'pending' | 'failed' = 'pending';
+    let analysisRecord: FeedbackAnalysisRecord | null = null;
+    let analysisError: string | null = null;
+
+    try {
+      const { FeedbackAnalyzer } = await import('../services/analysis/feedbackAnalyzer.js');
+      const analyzer = new FeedbackAnalyzer();
+      analysisRecord = await analyzer.analyzeAndStore({
+        feedbackId: record.id,
+        review: record.review,
+        category: record.category,
+        source: record.source,
+      });
+      analysisStatus = 'analyzed';
+    } catch (analysisErr: unknown) {
+      // Outage or unconfigured provider: submitted feedback remains safely preserved
+      analysisStatus = 'failed';
+      analysisError =
+        analysisErr instanceof Error ? analysisErr.message : 'AI analysis failed';
+      console.warn(
+        `[FeedbackRoute] Analysis for manual record ${record.id} failed, record safely preserved:`,
+        analysisError
+      );
+    }
+
+    res.status(201).json({
+      success: true,
+      message:
+        analysisStatus === 'analyzed'
+          ? 'Feedback submitted and analyzed successfully.'
+          : 'Feedback submitted successfully. Analysis status is recorded as failed/pending due to AI provider status.',
+      submissionStatus: 'submitted',
+      analysisStatus,
+      analysisError,
+      data: {
+        ...record,
+        analysis: analysisRecord,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+router.post('/', handleManualFeedbackSubmission);
+router.post('/submit', handleManualFeedbackSubmission);
 
 /**
  * GET /api/feedback

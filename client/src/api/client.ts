@@ -55,3 +55,60 @@ export async function seedSampleDataset(reset: boolean = false): Promise<any> {
   }
   return res.json();
 }
+
+export interface ManualFeedbackPayload {
+  review: string;
+  category?: string;
+}
+
+export interface ManualFeedbackResponse {
+  success: boolean;
+  message: string;
+  submissionStatus: 'submitted';
+  analysisStatus: 'analyzed' | 'pending' | 'failed';
+  analysisError?: string | null;
+  data: {
+    id: string;
+    review: string;
+    category: string;
+    contentHash: string;
+    source: string;
+    rowNumber: number;
+    batchId: string;
+    importedAt: string;
+    isSample: boolean;
+    datasetType: string;
+    analysis?: {
+      id: string;
+      sentiment: string;
+      sentimentScore: number;
+      urgency: string;
+      urgencyScore: number;
+      primaryTopic: string;
+      topics: string[];
+      keyPhrases: string[];
+      summary: string;
+      severity: number;
+      confidenceScore: number;
+      analyzedAt: string;
+    } | null;
+  };
+}
+
+export async function submitManualFeedback(
+  payload: ManualFeedbackPayload
+): Promise<ManualFeedbackResponse> {
+  const res = await fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.message || `Failed to submit feedback (HTTP ${res.status})`);
+    (err as any).status = res.status;
+    (err as any).errorType = data.error;
+    throw err;
+  }
+  return data;
+}
