@@ -32,4 +32,9 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Datasets & CSV Files
+*.csv
+BuildBattle_2026_Customer_Feedback_Dataset.csv
+uploads/
+server/uploads/
+server/data/

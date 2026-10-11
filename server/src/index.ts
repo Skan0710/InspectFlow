@@ -3,12 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { getDatabaseConfig } from './db/config.js';
 import { checkDatabaseHealth } from './db/health.js';
-import {
-  getPgPool,
-  getSupabaseClient,
-  parsePaginationParams,
-  DatabaseNotConfiguredError,
-} from './db/client.js';
+import { DatabaseNotConfiguredError } from './db/client.js';
+import feedbackRoutes from './routes/feedback.js';
 
 dotenv.config();
 
@@ -79,79 +75,8 @@ app.get('/api/health/db', async (_req: Request, res: Response) => {
   });
 });
 
-// Database-dependent Endpoint: Read Feedback with Keyset/Offset Pagination
-// Avoids loading all rows into memory unnecessarily
-app.get('/api/feedback', async (req: Request, res: Response, next: NextFunction) => {
-  const dbConfig = getDatabaseConfig();
-
-  if (!dbConfig.isConfigured) {
-    res.status(503).json({
-      error: 'DatabaseNotConfigured',
-      message:
-        'Database configuration is required to query feedback records. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or DATABASE_URL in server/.env.',
-      missingVariables: dbConfig.missingVariables,
-    });
-    return;
-  }
-
-  try {
-    const { page, pageSize, offset } = parsePaginationParams({
-      page: Number(req.query.page),
-      pageSize: Number(req.query.pageSize),
-    });
-
-    if (dbConfig.databaseUrl) {
-      const pool = getPgPool();
-      const countResult = await pool.query('SELECT COUNT(*) as total FROM feedback');
-      const total = Number(countResult.rows[0]?.total || 0);
-
-      const itemsResult = await pool.query(
-        `SELECT id, source, external_id, account_name, customer_email, channel, content, metadata, feedback_timestamp, created_at
-         FROM feedback
-         ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`,
-        [pageSize, offset]
-      );
-
-      res.status(200).json({
-        data: itemsResult.rows,
-        pagination: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
-        },
-      });
-      return;
-    }
-
-    // PostgREST Pathway via Supabase Client
-    const supabase = getSupabaseClient();
-    const { data, count, error } = await supabase
-      .from('feedback')
-      .select('id, source, external_id, account_name, customer_email, channel, content, metadata, feedback_timestamp, created_at', {
-        count: 'exact',
-      })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    res.status(200).json({
-      data: data || [],
-      pagination: {
-        page,
-        pageSize,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / pageSize),
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+// Customer Feedback and CSV Ingestion Routes
+app.use('/api/feedback', feedbackRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
@@ -190,7 +115,7 @@ app.listen(PORT, () => {
     console.log(
       `⚠️  Database is unconfigured. Missing: ${dbConfig.missingVariables.join(
         ', '
-      )}. Database endpoints will report 503 until configured.`
+      )}. Direct DB endpoints will report 503 until configured.`
     );
   } else {
     console.log('✅ Database configuration detected in environment.');
