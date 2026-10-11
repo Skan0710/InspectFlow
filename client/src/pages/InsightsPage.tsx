@@ -22,6 +22,8 @@ import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Link } from 'react-router-dom';
+import { RecommendationModal } from '../components/recommendations/RecommendationModal';
+import type { IssueRecommendation } from '../types/recommendations';
 
 interface RepresentativeExample {
   feedbackId: string;
@@ -141,6 +143,13 @@ export const InsightsPage: React.FC = () => {
   const [unmatchedReviews, setUnmatchedReviews] = useState<any[]>([]);
   const [loadingUnmatched, setLoadingUnmatched] = useState<boolean>(false);
 
+  // Recommendations state
+  const [recommendations, setRecommendations] = useState<Record<string, IssueRecommendation>>({});
+  const [selectedRecommendation, setSelectedRecommendation] = useState<IssueRecommendation | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [generatingRecIds, setGeneratingRecIds] = useState<Record<string, boolean>>({});
+  const [isBatchGenerating, setIsBatchGenerating] = useState<boolean>(false);
+
   const fetchClusters = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -167,9 +176,28 @@ export const InsightsPage: React.FC = () => {
     }
   }, [categoryFilter, priorityFilter, searchQuery]);
 
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      const res = await fetch('/api/recommendations');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.recommendations)) {
+          const map: Record<string, IssueRecommendation> = {};
+          for (const rec of data.recommendations) {
+            map[rec.issueId] = rec;
+          }
+          setRecommendations(map);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchClusters();
-  }, [fetchClusters]);
+    fetchRecommendations();
+  }, [fetchClusters, fetchRecommendations]);
 
   const handleRunClustering = async () => {
     setIsClustering(true);
@@ -222,6 +250,61 @@ export const InsightsPage: React.FC = () => {
       setError(err.message || 'Error occurred while recalculating priority scores.');
     } finally {
       setIsRecalculating(false);
+    }
+  };
+
+  const handleGenerateRecommendation = async (issueId: string) => {
+    setGeneratingRecIds((prev) => ({ ...prev, [issueId]: true }));
+    try {
+      const res = await fetch(`/api/recommendations/generate/${issueId}`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Generation failed: ${res.statusText}`);
+      }
+      const data = await res.json();
+      if (data.success && data.recommendation) {
+        setRecommendations((prev) => ({
+          ...prev,
+          [issueId]: data.recommendation,
+        }));
+        setSelectedRecommendation(data.recommendation);
+        setIsModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Error generating recommendation:', err);
+      alert(err.message || 'Failed to generate recommendation.');
+    } finally {
+      setGeneratingRecIds((prev) => ({ ...prev, [issueId]: false }));
+    }
+  };
+
+  const handleGenerateAllHighPriority = async () => {
+    setIsBatchGenerating(true);
+    try {
+      const res = await fetch('/api/recommendations/generate-all', {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Batch generation failed: ${res.statusText}`);
+      }
+      const data = await res.json();
+      if (data.success && Array.isArray(data.recommendations)) {
+        setRecommendations((prev) => {
+          const map: Record<string, IssueRecommendation> = { ...prev };
+          for (const rec of data.recommendations) {
+            map[rec.issueId] = rec;
+          }
+          return map;
+        });
+      }
+    } catch (err: any) {
+      console.error('Error generating recommendations for high-priority issues:', err);
+      alert(err.message || 'Failed to generate recommendations for high-priority issues.');
+    } finally {
+      setIsBatchGenerating(false);
     }
   };
 
@@ -332,6 +415,15 @@ export const InsightsPage: React.FC = () => {
             disabled={isClustering || isRecalculating}
           >
             {isClustering ? 'Clustering...' : 'Re-run Clustering'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Sparkles className={`h-4 w-4 text-indigo-600 ${isBatchGenerating ? 'animate-spin' : ''}`} />}
+            onClick={handleGenerateAllHighPriority}
+            disabled={isBatchGenerating || isClustering || isRecalculating}
+          >
+            {isBatchGenerating ? 'Generating Recs...' : 'Generate High-Priority Recommendations'}
           </Button>
           <Link to="/actions">
             <Button variant="primary" size="sm" leftIcon={<ArrowRight className="h-4 w-4" />}>
@@ -665,6 +757,83 @@ export const InsightsPage: React.FC = () => {
                     </Link>
                   </div>
 
+                  {/* Evidence-Backed AI Recommendations Section */}
+                  <div className="rounded-lg border border-slate-200 bg-gradient-to-r from-slate-50 via-indigo-50/20 to-slate-50 p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 font-semibold text-xs text-slate-900">
+                            <Sparkles className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                            <span>Evidence-Backed Recommendations</span>
+                          </div>
+                          {recommendations[cluster.id] ? (
+                            <Badge variant={recommendations[cluster.id].isFallback ? 'neutral' : 'indigo'} size="sm">
+                              {recommendations[cluster.id].isFallback ? 'Deterministic Fallback' : 'AI Grounded'}
+                            </Badge>
+                          ) : (
+                            <Badge variant="neutral" size="sm">
+                              Not Generated
+                            </Badge>
+                          )}
+                          {recommendations[cluster.id]?.suggestedTeam && (
+                            <span className="text-[11px] font-medium text-slate-500">
+                              Lead: <strong className="text-slate-700">{recommendations[cluster.id].suggestedTeam}</strong>
+                            </span>
+                          )}
+                        </div>
+                        {recommendations[cluster.id] ? (
+                          <p className="text-xs text-slate-600 line-clamp-1">
+                            <strong className="text-slate-800">{recommendations[cluster.id].recommendedActions.length} actions:</strong>{' '}
+                            {recommendations[cluster.id].issueSummary}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-500">
+                            Synthesize grounded next steps, root-cause context, and verbatim citations for this issue.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {recommendations[cluster.id] ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8 font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                              onClick={() => {
+                                setSelectedRecommendation(recommendations[cluster.id]);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              Inspect Recommendations ({recommendations[cluster.id].recommendedActions.length})
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-8 text-slate-500 hover:text-indigo-600"
+                              disabled={generatingRecIds[cluster.id]}
+                              onClick={() => handleGenerateRecommendation(cluster.id)}
+                              title="Regenerate recommendation"
+                            >
+                              <RotateCw className={`h-3.5 w-3.5 ${generatingRecIds[cluster.id] ? 'animate-spin' : ''}`} />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="text-xs h-8"
+                            leftIcon={<Sparkles className={`h-3.5 w-3.5 ${generatingRecIds[cluster.id] ? 'animate-spin' : ''}`} />}
+                            disabled={generatingRecIds[cluster.id]}
+                            onClick={() => handleGenerateRecommendation(cluster.id)}
+                          >
+                            {generatingRecIds[cluster.id] ? 'Analyzing Evidence...' : 'Generate Recommendation'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Expanded Member Feedback Drawer */}
                   {isExpanded && (
                     <div className="mt-4 pt-3 border-t border-slate-200 space-y-2">
@@ -727,6 +896,17 @@ export const InsightsPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Evidence-Backed Recommendations Modal */}
+      <RecommendationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        recommendation={selectedRecommendation}
+        onRegenerate={async (issueId) => {
+          await handleGenerateRecommendation(issueId);
+        }}
+        isRegenerating={selectedRecommendation ? Boolean(generatingRecIds[selectedRecommendation.issueId]) : false}
+      />
     </div>
   );
 };

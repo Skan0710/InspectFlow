@@ -6,6 +6,7 @@ import type { FeedbackAnalysisRecord, AnalysisRunRecord } from './analysis/types
 import type { IssueClusterData, IssueFeedbackLink, ClusteringResult, UnmatchedFeedbackItem } from './clustering/types.js';
 import { PriorityScoringService } from './scoring/priorityScoringService.js';
 import type { ScoringOptions, IssueScoringRecord, ScoringResultSummary } from './scoring/types.js';
+import type { IssueRecommendation } from './recommendations/types.js';
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
@@ -36,6 +37,7 @@ export class FeedbackStore {
   private issues: Map<string, IssueClusterData> = new Map();
   private issueFeedback: Map<string, IssueFeedbackLink[]> = new Map();
   private clusteringRuns: ClusteringResult[] = [];
+  private recommendations: Map<string, IssueRecommendation> = new Map();
   private scoringService = new PriorityScoringService();
 
   private constructor() {
@@ -99,6 +101,9 @@ export class FeedbackStore {
       if (issuesList) {
         for (const item of issuesList) {
           this.issues.set(item.id, item);
+          if (item.metadata && (item.metadata as any).recommendation) {
+            this.recommendations.set(item.id, (item.metadata as any).recommendation);
+          }
         }
       }
 
@@ -378,6 +383,7 @@ export class FeedbackStore {
       this.issues.clear();
       this.issueFeedback.clear();
       this.clusteringRuns = [];
+      this.recommendations.clear();
     } else if (scope === 'sample_only') {
       const remaining = this.records.filter((r) => !r.isSample);
       removedCount = initialCount - remaining.length;
@@ -862,5 +868,51 @@ export class FeedbackStore {
     }
 
     return scoringResult;
+  }
+
+  public async saveRecommendation(recommendation: IssueRecommendation): Promise<void> {
+    this.recommendations.set(recommendation.issueId, recommendation);
+
+    // Associate recommendation in issue metadata
+    const issue = this.issues.get(recommendation.issueId);
+    if (issue) {
+      issue.metadata = {
+        ...issue.metadata,
+        recommendation,
+      };
+      issue.updatedAt = new Date().toISOString();
+      this.issues.set(issue.id, issue);
+    }
+
+    this.flushToDisk();
+
+    // If PostgreSQL configured, update issue metadata in DB
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl && issue) {
+      try {
+        const pool = getPgPool();
+        const sql = `UPDATE issues SET metadata = $1, updated_at = $2 WHERE id = $3;`;
+        await pool.query(sql, [JSON.stringify(issue.metadata), issue.updatedAt, issue.id]);
+      } catch (err) {
+        console.warn('[FeedbackStore] DB update for recommendation skipped/failed:', err);
+      }
+    }
+  }
+
+  public getRecommendationByIssueId(issueId: string): IssueRecommendation | null {
+    if (this.recommendations.has(issueId)) {
+      return this.recommendations.get(issueId)!;
+    }
+    const issue = this.issues.get(issueId);
+    if (issue && issue.metadata && (issue.metadata as any).recommendation) {
+      const rec = (issue.metadata as any).recommendation as IssueRecommendation;
+      this.recommendations.set(issueId, rec);
+      return rec;
+    }
+    return null;
+  }
+
+  public getAllRecommendations(): IssueRecommendation[] {
+    return Array.from(this.recommendations.values());
   }
 }
