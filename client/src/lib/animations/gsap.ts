@@ -36,8 +36,8 @@ export function useGsapContext(
     if (!scopeRef.current) return;
 
     // Create GSAP context scoped to container
-    const ctx = gsap.context(() => {
-      callbackRef.current(ctx);
+    const ctx = gsap.context((self) => {
+      callbackRef.current(self);
     }, scopeRef);
 
     return () => {
