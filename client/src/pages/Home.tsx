@@ -23,7 +23,7 @@ import {
 import { Link } from 'react-router-dom';
 import type { HealthResponse } from '../types/api';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
-import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
+import { HeroBackground } from '../components/canvas/HeroBackground';
 
 const mockTelemetryData = [
   { time: '00:00', requests: 120, latency: 18 },
@@ -83,7 +83,7 @@ export const Home: React.FC = () => {
         className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 p-8 sm:p-12 shadow-2xl backdrop-blur-xl"
       >
         {/* Immersive 3D ShaderGradient Background Atmosphere */}
-        <ShaderGradientBackground className="absolute inset-0 pointer-events-none" />
+        <HeroBackground className="absolute inset-0 pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl space-y-6">
           <div className="home-hero-badge inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300">

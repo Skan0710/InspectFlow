@@ -52,7 +52,7 @@ export const ProductFooter: React.FC = () => {
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1 font-mono text-[10px]">
               <Cpu className="h-3 w-3 text-slate-400" />
-              Engine: React 19 + GSAP + Lenis + ShaderGradient
+              Engine: React 19 + GSAP + Lenis + WebGL
             </span>
           </div>
         </div>

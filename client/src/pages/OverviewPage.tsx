@@ -32,10 +32,8 @@ import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
 import { WorkflowFeatureBento } from '../components/landing/WorkflowFeatureBento';
-import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
-import { BorderBeam } from '../components/ui/BorderBeam';
+import { HeroBackground } from '../components/canvas/HeroBackground';
 import { StatsCounter } from '../components/ui/stats-counter';
-import { FlipText } from '../components/ui/flip-text';
 import { ShareSheet } from '../components/ui/share-sheet';
 import { LineHoverLink } from '../components/ui/line-hover-link';
 
@@ -47,10 +45,10 @@ const SENTIMENT_COLORS = {
 };
 
 const CATEGORY_COLORS = [
-  '#6366f1', // Indigo
-  '#0ea5e9', // Sky
-  '#f59e0b', // Amber
-  '#f43f5e', // Rose
+  '#4338ca', // Indigo 700
+  '#6366f1', // Indigo 500
+  '#8b5cf6', // Violet 500
+  '#a5b4fc', // Indigo 300
 ];
 
 const TIER_BADGE_VARIANTS: Record<string, 'danger' | 'warning' | 'indigo' | 'neutral'> = {
@@ -220,52 +218,54 @@ export const OverviewPage: React.FC = () => {
   })) : [];
 
   return (
-    <div ref={pageContainerRef} className="space-y-6">
-      {/* High-Visibility AI Intelligence Atmosphere Banner with ShaderGradient */}
-      <div className="overview-hero-surface relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-7 text-white shadow-xl">
-        <ShaderGradientBackground className="absolute inset-0 pointer-events-none" />
-        <BorderBeam size={240} duration={14} borderWidth={1.5} colorFrom="#6366f1" colorTo="#a855f7" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-medium text-indigo-300">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-              Build Battle 2026 AI Intelligence Engine
+    <div ref={pageContainerRef}>
+      {/* Hero: full-bleed indigo shader atmosphere */}
+      <section className="overview-hero-surface relative isolate overflow-hidden text-white">
+        <HeroBackground />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <div className="max-w-2xl space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-xs font-medium text-indigo-100 backdrop-blur-sm">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
+              Customer feedback intelligence
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex flex-wrap items-center gap-2">
-              <span>Customer Voice Analytics &</span>
-              <FlipText className="bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
-                Priority Radar
-              </FlipText>
+            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+              Hear every customer.{' '}
+              <span className="bg-gradient-to-r from-indigo-200 to-violet-300 bg-clip-text text-transparent">
+                Fix what matters first.
+              </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Real customer voice ingestion, multi-factor deterministic triage ranking, and evidence-grounded action intelligence.
+            <p className="max-w-xl text-sm leading-relaxed text-indigo-100/90 sm:text-base">
+              Turn raw reviews into a ranked, evidence-backed action queue: sentiment, clustered issues, and
+              deterministic priority scores in one place.
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Link
-              to="/feedback"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 transition-all hover:bg-indigo-500 hover:shadow-indigo-600/50"
-            >
-              <Database className="h-3.5 w-3.5" />
-              Explore Feedback
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-            <Link
-              to="/actions"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
-            >
-              <Layers className="h-3.5 w-3.5 text-indigo-400" />
-              Action Center
-            </Link>
-            <ShareSheet
-              url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local'}
-              title="InsightFlow Intelligence Dashboard"
-              variant="compact"
-            />
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Link
+                to="/feedback"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-900 shadow-lg shadow-indigo-950/30 transition-colors hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+              >
+                <Database className="h-4 w-4" />
+                Explore feedback
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/actions"
+                className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/40 bg-indigo-950/40 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-indigo-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+              >
+                <Layers className="h-4 w-4 text-indigo-300" />
+                View action queue
+              </Link>
+              <ShareSheet
+                url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local'}
+                title="InsightFlow Intelligence Dashboard"
+                variant="compact"
+              />
+            </div>
           </div>
         </div>
-      </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#f6f7fd] to-transparent" />
+      </section>
 
+      <div className="mx-auto max-w-7xl space-y-6 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
       {/* Page Header with Scope Controls */}
       <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
         <div>
@@ -338,26 +338,23 @@ export const OverviewPage: React.FC = () => {
         </div>
       )}
 
-      {/* Empty Dataset Banner */}
+      {/* Empty state: nothing ingested yet */}
       {metrics?.summary.isEmpty && !isLoading && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-800">
-          <div className="flex items-start sm:items-center gap-3">
-            <Database className="h-6 w-6 text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
+        <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/60 p-6 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+              <Database className="h-5 w-5" />
+            </span>
             <div>
-              <h4 className="text-sm font-semibold text-slate-900">No Customer Feedback Ingested</h4>
-              <p className="text-slate-600 mt-0.5">
-                The repository is currently empty. Ingest the BuildBattle 2026 CSV or load the 20-row sample fixture to populate intelligence charts.
+              <h3 className="font-semibold text-slate-900">No customer feedback ingested yet</h3>
+              <p className="mt-0.5 text-xs text-slate-600">
+                Import a CSV of reviews or load the 20-row demo fixture to populate the charts and priority queue.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSeedDemo}
-              isLoading={isSeedingSample}
-            >
-              Load 20 Demo Rows
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleSeedDemo} isLoading={isSeedingSample}>
+              Load 20 demo rows
             </Button>
             <Link to="/feedback">
               <Button variant="primary" size="sm" leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}>
@@ -367,59 +364,6 @@ export const OverviewPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Partially Analyzed Notification Banner */}
-      {metrics && !metrics.summary.isEmpty && !metrics.summary.hasAnalysisRun && (
-        <div className="rounded-xl border border-amber-200/90 bg-amber-50/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
-          <div className="flex items-start sm:items-center gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
-            <div>
-              <div className="font-semibold text-amber-950 flex items-center gap-2">
-                <span>AI Analysis Pipeline Pending</span>
-                <span className="rounded bg-amber-200/70 px-1.5 py-0.5 font-mono text-[10px] text-amber-900 uppercase">
-                  Not Run
-                </span>
-              </div>
-              <p className="text-amber-800 mt-0.5">
-                {metrics.summary.totalFeedback.toLocaleString()} feedback records are indexed, but zero sentiment or issue classifications have been calculated. Trigger batch analysis below to populate AI intelligence.
-              </p>
-            </div>
-          </div>
-          <div className="shrink-0">
-            <Badge variant="warning" size="sm" dot>
-              Awaiting First Run
-            </Badge>
-          </div>
-        </div>
-      )}
-
-      {/* Partially Analyzed Progress Banner */}
-      {metrics && metrics.summary.hasAnalysisRun && metrics.summary.pendingAnalysis > 0 && (
-        <div className="rounded-xl border border-indigo-200/90 bg-indigo-50/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-indigo-900">
-          <div className="flex items-start sm:items-center gap-3">
-            <Sparkles className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5 sm:mt-0" />
-            <div>
-              <div className="font-semibold text-indigo-950 flex items-center gap-2">
-                <span>Partial Analysis Coverage: {metrics.summary.analysisCoveragePercent}% Complete</span>
-                <span className="rounded bg-indigo-200/70 px-1.5 py-0.5 font-mono text-[10px] text-indigo-900">
-                  {metrics.summary.analyzedFeedback} / {metrics.summary.totalFeedback} ANALYZED
-                </span>
-              </div>
-              <p className="text-indigo-800 mt-0.5">
-                {metrics.summary.pendingAnalysis.toLocaleString()} feedback items remain unanalyzed. Sentiment percentages below are calculated strictly against the {metrics.summary.analyzedFeedback} analyzed items.
-              </p>
-            </div>
-          </div>
-          <div className="shrink-0">
-            <Badge variant="indigo" size="sm" dot>
-              Batch Resumable
-            </Badge>
-          </div>
-        </div>
-      )}
-
-      {/* Batch Pipeline Control Card */}
-      <AnalysisProgressCard onAnalysisComplete={loadData} />
 
       {/* 1. KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -544,6 +488,69 @@ export const OverviewPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Compact ingestion + analysis coverage status */}
+      {metrics && !metrics.summary.isEmpty && (
+        <div className="flex flex-col gap-4 rounded-xl border border-indigo-100 bg-white p-4 shadow-xs lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Database className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">
+                {metrics.summary.totalFeedback.toLocaleString()} records ingested
+              </p>
+              <p className="truncate text-xs text-slate-500">
+                {datasetStatus
+                  ? `${datasetStatus.genuineCount.toLocaleString()} genuine · ${datasetStatus.sampleCount.toLocaleString()} demo`
+                  : 'Dataset provenance loading'}
+                {datasetStatus?.lastImportAt
+                  ? ` · last import ${new Date(datasetStatus.lastImportAt).toLocaleString()}`
+                  : ''}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-1 items-center gap-4 lg:max-w-md">
+            <div className="flex-1">
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="font-medium text-slate-600">Analysis coverage</span>
+                <span className="font-semibold text-slate-900">
+                  {metrics.summary.analyzedFeedback.toLocaleString()} / {metrics.summary.totalFeedback.toLocaleString()}
+                </span>
+              </div>
+              <div
+                className="h-2 overflow-hidden rounded-full bg-indigo-100"
+                role="progressbar"
+                aria-label="Analysis coverage"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={metrics.summary.analysisCoveragePercent}
+              >
+                <div
+                  className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+                  style={{ width: `${Math.min(100, metrics.summary.analysisCoveragePercent)}%` }}
+                />
+              </div>
+            </div>
+            {!metrics.summary.hasAnalysisRun ? (
+              <Badge variant="warning" size="sm" dot>
+                Awaiting first run
+              </Badge>
+            ) : metrics.summary.pendingAnalysis > 0 ? (
+              <Badge variant="indigo" size="sm" dot>
+                {metrics.summary.pendingAnalysis.toLocaleString()} pending
+              </Badge>
+            ) : (
+              <Badge variant="success" size="sm" dot>
+                Fully analyzed
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Batch Pipeline Control Card */}
+      <AnalysisProgressCard onAnalysisComplete={loadData} />
 
       {/* 2 & 3. Visual Charts Section: Sentiment Donut & Category Distribution */}
       <div className="overview-charts-section grid gap-6 lg:grid-cols-12">
@@ -1048,6 +1055,7 @@ export const OverviewPage: React.FC = () => {
 
       {/* End-to-End Product Storytelling Journey Section */}
       <ProductStorySection />
+      </div>
     </div>
   );
 };

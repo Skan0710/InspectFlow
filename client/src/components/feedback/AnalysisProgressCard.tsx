@@ -255,9 +255,9 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
   };
 
   return (
-    <Card className={`border border-slate-200/90 shadow-sm overflow-hidden ${className}`}>
+    <Card className={`border border-indigo-100 shadow-sm overflow-hidden ${className}`}>
       {/* Top Banner & Title */}
-      <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white">
+      <div className="px-4 py-3 bg-gradient-to-r from-indigo-950 to-indigo-900 text-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-indigo-600/30 border border-indigo-400/30 text-indigo-300">
@@ -266,13 +266,10 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-base tracking-tight text-white">
-                  AI Structured Batch Analysis Pipeline
+                  AI Analysis Pipeline
                 </h3>
                 {getStatusBadge()}
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Multi-pass classification, grounded evidence extraction, and zero-hallucination sentiment engine.
-              </p>
             </div>
           </div>
 
@@ -325,7 +322,7 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
             ) : (
               <div className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-lg">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                All {totalDatasetCount} Reviews Analyzed
+                {totalDatasetCount > 0 ? `All ${totalDatasetCount} reviews analyzed` : 'No reviews to analyze yet'}
               </div>
             )}
           </div>
@@ -413,7 +410,7 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
       )}
 
       {/* Progress & Live Metrics Section */}
-      <div className="p-4 sm:p-5 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Progress Bar */}
         <div>
           <div className="flex justify-between items-center text-xs mb-1.5">
@@ -439,7 +436,8 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
           </div>
         </div>
 
-        {/* Counts Breakdown Grid */}
+        {/* Counts Breakdown Grid (only meaningful once a run exists) */}
+        {run && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
           <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
             <span className="text-slate-500 block text-[11px]">Total in Job</span>
@@ -472,6 +470,7 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
             </span>
           </div>
         </div>
+        )}
 
         {/* Run Details & Metadata Info Footer */}
         {run && (

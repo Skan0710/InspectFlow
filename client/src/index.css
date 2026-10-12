@@ -8,7 +8,7 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #f8fafc;
+    background-color: #f6f7fd;
     color: #0f172a;
     min-height: 100vh;
   }
@@ -24,12 +24,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #c7d2fe;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #a5b4fc;
   }
 }
 
