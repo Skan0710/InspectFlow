@@ -8,24 +8,27 @@ import { ActionCenterPage } from './pages/ActionCenterPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AdaptionPage } from './pages/AdaptionPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SmoothScrollProvider } from './components/providers/SmoothScrollProvider';
 
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<OverviewPage />} />
-          <Route path="/overview" element={<Navigate to="/" replace />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/insights" element={<InsightsPage />} />
-          <Route path="/actions" element={<ActionCenterPage />} />
-          <Route path="/adaption" element={<AdaptionPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <SmoothScrollProvider>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/overview" element={<Navigate to="/" replace />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/insights" element={<InsightsPage />} />
+            <Route path="/actions" element={<ActionCenterPage />} />
+            <Route path="/adaption" element={<AdaptionPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </SmoothScrollProvider>
     </BrowserRouter>
   );
 };
