@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#082f49"/>
+      <stop offset="50%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="glow5" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" rx="32" fill="url(#bg5)"/>
+  <circle cx="300" cy="240" r="140" fill="url(#glow5)" opacity="0.25" filter="blur(30px)"/>
+  <rect x="210" y="150" width="180" height="180" rx="16" fill="#0f172a" stroke="#38bdf8" stroke-width="3" opacity="0.9"/>
+  <path d="M250 270 L280 230 L310 250 L350 190" fill="none" stroke="#38bdf8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="250" cy="270" r="6" fill="#7dd3fc"/>
+  <circle cx="280" cy="230" r="6" fill="#7dd3fc"/>
+  <circle cx="310" cy="250" r="6" fill="#7dd3fc"/>
+  <circle cx="350" cy="190" r="6" fill="#7dd3fc"/>
+  <text x="300" y="420" font-family="system-ui, sans-serif" font-size="26" font-weight="800" fill="#ffffff" text-anchor="middle">Executive Reports</text>
+  <text x="300" y="460" font-family="system-ui, sans-serif" font-size="16" font-weight="500" fill="#e0f2fe" text-anchor="middle">PDF & CSV Delivery • Board Summaries</text>
+</svg>

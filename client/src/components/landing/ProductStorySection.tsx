@@ -10,7 +10,36 @@ import {
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { gsap, useGsapContext, prefersReducedMotion } from '../../lib/animations/gsap';
+import { DiagonalCarousel, type DiagonalCarouselItem } from '../ui/diagonal-carousel';
 import { LineHoverLink } from '../ui/line-hover-link';
+
+const CAROUSEL_ITEMS: DiagonalCarouselItem[] = [
+  {
+    src: '/carousel/ingestion.svg',
+    title: 'Streaming Ingestion Pipeline',
+    alt: 'Ingestion Pipeline',
+  },
+  {
+    src: '/carousel/grounding.svg',
+    title: 'Grounded Semantic Analysis',
+    alt: 'AI Grounding',
+  },
+  {
+    src: '/carousel/matrix.svg',
+    title: 'Deterministic Triage Matrix',
+    alt: 'Priority Matrix',
+  },
+  {
+    src: '/carousel/actions.svg',
+    title: 'Closed-Loop Action Tracking',
+    alt: 'Action Center',
+  },
+  {
+    src: '/carousel/reports.svg',
+    title: 'Executive PDF & CSV Delivery',
+    alt: 'Executive Delivery',
+  },
+];
 
 export const ProductStorySection: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +208,35 @@ export const ProductStorySection: React.FC = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* 3D Diagonal Showcase Carousel */}
+      <div className="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6 text-white shadow-xl overflow-hidden relative">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 relative z-10">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-semibold text-indigo-300">
+              <Sparkles className="h-3 w-3 text-indigo-400" />
+              Interactive Pipeline Showcase
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-1.5">
+              3D Architecture Flow
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Slide through the five core engines powering verified customer intelligence.
+            </p>
+          </div>
+          <span className="text-xs text-slate-400 font-mono hidden sm:inline-block">Use arrows or drag to explore</span>
+        </div>
+        <div className="h-96 sm:h-[420px] w-full relative">
+          <DiagonalCarousel
+            items={CAROUSEL_ITEMS}
+            slideSize={280}
+            rotationStep={22}
+            verticalStep={70}
+            loop={true}
+            className="h-full"
+          />
+        </div>
       </div>
 
       {/* Trust & Methodology Callout */}

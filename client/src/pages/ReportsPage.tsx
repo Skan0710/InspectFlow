@@ -23,6 +23,10 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { EmptyState } from '../components/ui/EmptyState';
+import { FlipText } from '../components/ui/flip-text';
+import { StatsCounter } from '../components/ui/stats-counter';
+import { ShareSheet } from '../components/ui/share-sheet';
+import { LineHoverLink } from '../components/ui/line-hover-link';
 import {
   fetchReports,
   fetchReportById,
@@ -144,11 +148,14 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Reports & Intelligence Digests
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <span>Executive</span>
+              <FlipText className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
+                Reports & Digests
+              </FlipText>
             </h2>
-            <Badge variant="indigo" size="sm">
-              Verified Metrics
+            <Badge variant="indigo" size="sm" className="font-mono">
+              <StatsCounter value={reports.length} /> Reports
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -156,6 +163,18 @@ export const ReportsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
+          <LineHoverLink
+            variant="slide"
+            href="/actions"
+            className="text-xs font-medium text-slate-600 hover:text-indigo-600 mr-1"
+          >
+            Action Center →
+          </LineHoverLink>
+          <ShareSheet
+            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/reports'}
+            title="InsightFlow Executive Intelligence Reports"
+            variant="compact"
+          />
           <Button
             variant="outline"
             size="sm"
@@ -490,7 +509,7 @@ export const ReportsPage: React.FC = () => {
                 <Textarea
                   placeholder="Additional context or audience scope notes..."
                   value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormDescription(e.target.value)}
                   rows={2}
                 />
               </div>

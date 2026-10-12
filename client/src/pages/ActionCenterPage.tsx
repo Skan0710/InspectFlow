@@ -19,6 +19,10 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { IssueDetailModal } from '../components/issues/IssueDetailModal';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
+import { FlipText } from '../components/ui/flip-text';
+import { StatsCounter } from '../components/ui/stats-counter';
+import { ShareSheet } from '../components/ui/share-sheet';
+import { LineHoverLink } from '../components/ui/line-hover-link';
 import type { ActionIssue, IssueStatus, StatusSummary } from '../types/issues';
 import type { IssueRecommendation } from '../types/recommendations';
 
@@ -189,14 +193,29 @@ export const ActionCenterPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Action Center & Issue Tracking
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span>Customer</span>
+            <FlipText className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
+              Action Center
+            </FlipText>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Prioritized queue of customer friction topics with persistent status management, internal notes, and owners.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
+          <LineHoverLink
+            variant="slide"
+            href="/insights"
+            className="text-xs font-medium text-slate-600 hover:text-indigo-600 mr-1"
+          >
+            Insights Radar →
+          </LineHoverLink>
+          <ShareSheet
+            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/actions'}
+            title="InsightFlow Action Center Triage Queue"
+            variant="compact"
+          />
           <Button
             variant="outline"
             size="sm"
@@ -230,13 +249,13 @@ export const ActionCenterPage: React.FC = () => {
           >
             <span>{tab.label}</span>
             <span
-              className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+              className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
                 statusFilter === tab.value
                   ? 'bg-white/20 text-white'
                   : 'bg-slate-200 text-slate-600'
               }`}
             >
-              {tab.count}
+              <StatsCounter value={tab.count} />
             </span>
           </button>
         ))}

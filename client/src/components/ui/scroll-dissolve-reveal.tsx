@@ -136,7 +136,8 @@ const coverFragmentShader = `
     
     float dissolveMask = smoothstep(dissolveThreshold - 0.03, dissolveThreshold, normalizedDist);
     
-    vec3 edgeColor = vec3(1.0, 1.0, 1.0);
+    // Enhanced vibrant indigo-violet transition edge color
+    vec3 edgeColor = vec3(0.55, 0.45, 1.0);
     
     vec3 baseColor = mix(texColor.rgb, vec3(0.0), uGrayscale);
     vec3 finalColor = baseColor;
@@ -227,7 +228,8 @@ const coverFragmentShaderReverse = `
     edge = pow(edge, 0.7) * 2.0;
     edge = clamp(edge, 0.0, 1.0);
     
-    vec3 edgeColor = vec3(1.0, 1.0, 1.0);
+    // Enhanced vibrant indigo-violet transition edge color
+    vec3 edgeColor = vec3(0.55, 0.45, 1.0);
     
     vec3 darkBase = vec3(0.0);
     vec3 baseColor = mix(texColor.rgb, darkBase, uDarkness);

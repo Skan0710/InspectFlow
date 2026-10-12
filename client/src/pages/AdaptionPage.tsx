@@ -18,6 +18,10 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
+import { FlipText } from '../components/ui/flip-text';
+import { StatsCounter } from '../components/ui/stats-counter';
+import { ShareSheet } from '../components/ui/share-sheet';
+import { LineHoverLink } from '../components/ui/line-hover-link';
 import type {
   AdaptionRunRecord,
   AdaptionProviderStatus,
@@ -140,11 +144,14 @@ export const AdaptionPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Adaption Labs Evaluation & Optimization
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <span>Model</span>
+              <FlipText className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
+                Adaption Labs
+              </FlipText>
             </h2>
-            <Badge variant="indigo" size="sm">
-              Official Integration
+            <Badge variant="indigo" size="sm" className="font-mono">
+              <StatsCounter value={runs.length} /> Evaluations
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -152,6 +159,18 @@ export const AdaptionPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
+          <LineHoverLink
+            variant="slide"
+            href="/insights"
+            className="text-xs font-medium text-slate-600 hover:text-indigo-600 mr-1"
+          >
+            Insights Radar →
+          </LineHoverLink>
+          <ShareSheet
+            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/adaption'}
+            title="InsightFlow Adaption Labs Model Benchmark"
+            variant="compact"
+          />
           <Button
             variant="outline"
             size="sm"

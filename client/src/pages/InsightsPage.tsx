@@ -3,7 +3,6 @@ import { useDebouncedValue } from '../hooks/use-debounced-value';
 import { 
   Sparkles, 
   RotateCw, 
-  ArrowRight, 
   Layers, 
   Search, 
   Quote, 
@@ -24,6 +23,10 @@ import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Link } from 'react-router-dom';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
+import { FlipText } from '../components/ui/flip-text';
+import { StatsCounter } from '../components/ui/stats-counter';
+import { ShareSheet } from '../components/ui/share-sheet';
+import { LineHoverLink } from '../components/ui/line-hover-link';
 import type { IssueRecommendation } from '../types/recommendations';
 
 interface RepresentativeExample {
@@ -408,14 +411,22 @@ export const InsightsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            AI Insights & Priority Scoring
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span>Customer</span>
+            <FlipText className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
+              AI Insights Radar
+            </FlipText>
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Deterministic issue-priority scoring calculated from actual frequency, severity, and negative sentiment.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <ShareSheet
+            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/insights'}
+            title="InsightFlow AI Insights & Issue Clusters"
+            variant="compact"
+          />
           <Button 
             variant="outline" 
             size="sm" 
@@ -443,11 +454,13 @@ export const InsightsPage: React.FC = () => {
           >
             {isBatchGenerating ? 'Generating Recs...' : 'Generate High-Priority Recommendations'}
           </Button>
-          <Link to="/actions">
-            <Button variant="primary" size="sm" leftIcon={<ArrowRight className="h-4 w-4" />}>
-              Review Action Queue
-            </Button>
-          </Link>
+          <LineHoverLink
+            variant="slide"
+            href="/actions"
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+          >
+            Review Action Queue →
+          </LineHoverLink>
         </div>
       </div>
 
@@ -459,7 +472,9 @@ export const InsightsPage: React.FC = () => {
               <Sparkles className="h-4 w-4 text-indigo-600" />
               <span>Issue Clusters</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalClusters}</div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              <StatsCounter value={stats.totalClusters} />
+            </div>
             <div className="text-[11px] text-slate-400 mt-0.5">Semantically distinct topics</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
@@ -467,7 +482,9 @@ export const InsightsPage: React.FC = () => {
               <Layers className="h-4 w-4 text-emerald-600" />
               <span>Total Feedback Volume</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">{stats.totalFeedbackClustered}</div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              <StatsCounter value={stats.totalFeedbackClustered} />
+            </div>
             <div className="text-[11px] text-slate-400 mt-0.5">Reviews assigned to clusters</div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
@@ -475,7 +492,9 @@ export const InsightsPage: React.FC = () => {
               <Hash className="h-4 w-4 text-blue-600" />
               <span>Unique Inquiries</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">{stats.uniqueTextsCount}</div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              <StatsCounter value={stats.uniqueTextsCount} />
+            </div>
             <div className="text-[11px] text-slate-400 mt-0.5">Deduplicated reports (exposing repeats)</div>
           </div>
           <div 
@@ -491,7 +510,9 @@ export const InsightsPage: React.FC = () => {
                 {showUnmatched ? 'Hide' : 'View'}
               </span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">{stats.unmatchedCount}</div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              <StatsCounter value={stats.unmatchedCount} />
+            </div>
             <div className="text-[11px] text-slate-400 mt-0.5">Isolated singletons / outliers</div>
           </div>
         </div>

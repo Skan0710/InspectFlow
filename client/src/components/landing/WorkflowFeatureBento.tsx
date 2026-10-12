@@ -11,6 +11,118 @@ import {
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { BorderBeam } from '../ui/BorderBeam';
+import ExpandableBentoGrid from '../ui/expandable-bento-grid';
+
+const EXPANDABLE_BENTO_ITEMS = [
+  {
+    id: 'streaming-etl',
+    title: 'Streaming Ingestion Pipeline',
+    subtitle: 'RFC-4180 chunk streaming with hash deduplication',
+    description: 'Processes 7,000+ row customer datasets with bounded memory utilization and automated deduplication.',
+    icon: <FileSpreadsheet className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">High-Throughput Ingestion Safeguards</p>
+        <p>
+          InsightFlow streams incoming CSV datasets in bounded 500-record chunks. Identical reviews are identified via SHA-256 hashes, tracking repeat complaint volume without corrupting raw sentiment distributions.
+        </p>
+        <div className="rounded-lg bg-slate-900 p-3 text-slate-200 font-mono text-xs">
+          <code>
+            Hash: sha256(review_text.toLowerCase())<br />
+            Deduplication: True (tracks duplicate count per unique complaint)
+          </code>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'grounded-ai',
+    title: 'Zero-Hallucination Semantic Analysis',
+    subtitle: 'Strict JSON schemas & verbatim evidence citations',
+    description: 'Extracts validated sentiment, severity ratings (1-5), and primary friction topics directly grounded in customer text.',
+    icon: <BrainCircuit className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">Strict Model Calibration</p>
+        <p>
+          Every sentiment classification and friction topic requires exact quotation excerpts from the customer review. Hallucinated topics or ungrounded statistics are rejected by runtime validation schemas.
+        </p>
+        <div className="rounded-lg bg-slate-900 p-3 text-slate-200 font-mono text-xs">
+          <code>
+            Sentiment: positive | neutral | negative | mixed<br />
+            Severity: 1 (cosmetic) to 5 (blocker/data loss)
+          </code>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'math-matrix',
+    title: 'Deterministic Triage Scoring',
+    subtitle: 'Frequency 40% + Severity 35% + Negative Ratio 25%',
+    description: 'Mathematical prioritization formula ranking issues objectively with zero black-box bias.',
+    icon: <Layers className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">Mathematical Priority Formula</p>
+        <p>
+          Issues are clustered into distinct root-cause topics and ranked through transparent equations:
+        </p>
+        <div className="rounded-lg bg-slate-900 p-3 text-slate-200 font-mono text-xs">
+          <code>
+            Priority = 100 × (0.40 × FreqScore + 0.35 × SevNorm + 0.25 × NegRatio)<br />
+            Tiers: Critical (≥75) | High (≥50) | Medium (≥25) | Low (&lt;25)
+          </code>
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'closed-loop',
+    title: 'Action Lifecycle & Collaboration',
+    subtitle: 'Status workflows with assignee ownership & notes',
+    description: 'Track issues across Open, In Progress, Resolved, and Dismissed states with full audit history.',
+    icon: <ShieldCheck className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">Persistent Issue Tracking</p>
+        <p>
+          Assign issues to specific team members, attach internal investigation notes, star high-risk items, and synchronize changes with real-time dashboard metrics.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'executive-delivery',
+    title: 'Executive PDF & CSV Digests',
+    subtitle: 'Automated board briefings with traceable evidence',
+    description: 'Generate sanitized, publication-ready PDF intelligence briefs and CSV exports in seconds.',
+    icon: <FileDown className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">Board-Ready Executive Delivery</p>
+        <p>
+          Reports compile scope analytics, sentiment distributions, priority matrices, and verifiable feedback excerpts with page numbering and cryptographic integrity checks.
+        </p>
+      </div>
+    ),
+  },
+  {
+    id: 'adaption-tuning',
+    title: 'Adaption Domain Tuning',
+    subtitle: 'Fine-tune models on domain-specific customer terminology',
+    description: 'Benchmark baseline vs adapted model classification accuracy on industry-specific feedback.',
+    icon: <Sparkles className="h-6 w-6" />,
+    content: (
+      <div className="space-y-3">
+        <p className="font-semibold text-slate-800">Adaption AI Fine-Tuning</p>
+        <p>
+          Connects InsightFlow to Adaption tuning pipelines to adapt LLM classification accuracy for specialized B2B fintech, logistics, and enterprise SaaS customer jargon.
+        </p>
+      </div>
+    ),
+  },
+];
 
 interface BentoFeature {
   id: string;
@@ -213,6 +325,23 @@ export const WorkflowFeatureBento: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Interactive Expandable Bento Grid */}
+      <div className="mt-8 pt-6 border-t border-slate-200/80">
+        <div className="mb-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50/80 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
+            <Sparkles className="h-3 w-3 text-indigo-600" />
+            Expandable Architecture Cards
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
+            Deep-Dive into System Subsystems
+          </h3>
+          <p className="text-xs text-slate-500">
+            Click any subsystem card below to expand full operational specs, formulas, and schema guarantees.
+          </p>
+        </div>
+        <ExpandableBentoGrid items={EXPANDABLE_BENTO_ITEMS} />
       </div>
     </section>
   );
