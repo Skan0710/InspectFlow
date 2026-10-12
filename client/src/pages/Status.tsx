@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -61,14 +62,14 @@ export const Status: React.FC = () => {
           </p>
         </div>
 
-        <button
+        <Button
+          variant="outline"
           onClick={checkEndpoint}
           disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-500 disabled:opacity-50"
+          leftIcon={<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Run Health Check
-        </button>
+        </Button>
       </div>
 
       {/* Metrics Cards */}

@@ -84,7 +84,7 @@ export function SpotlightNavbar({ items, activeIndex, className = '' }: Spotligh
                 data-index={idx}
                 aria-current={active ? 'page' : undefined}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 ${
-                  active ? 'bg-white/15 text-white' : 'text-indigo-100/80 hover:text-white'
+                  active ? 'bg-white/15 text-white' : 'text-white/90 hover:text-white'
                 }`}
               >
                 {item.label}

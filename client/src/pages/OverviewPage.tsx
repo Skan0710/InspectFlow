@@ -222,10 +222,6 @@ export const OverviewPage: React.FC = () => {
       <section className="overview-hero-surface relative isolate overflow-hidden text-white">
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-2xl space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-xs font-medium text-indigo-100 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
-              Customer feedback intelligence
-            </div>
             <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
               Hear every customer.{' '}
               <span className="bg-gradient-to-r from-indigo-200 to-violet-300 bg-clip-text text-transparent">

@@ -90,7 +90,7 @@ export const TopNavbar: React.FC = () => {
               >
                 <div className="border-b border-white/10 bg-white/5 px-4 py-3">
                   <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
-                  <p className="truncate text-xs text-indigo-200/80">{profile.email || profile.role}</p>
+                  <p className="truncate text-xs text-indigo-50">{profile.email || profile.role}</p>
                 </div>
                 <div className="p-1.5">
                   <Link
@@ -141,7 +141,7 @@ export const TopNavbar: React.FC = () => {
                   end={path === '/'}
                   className={({ isActive }) =>
                     `${mobileLink} ${
-                      isActive ? 'bg-white/15 text-white' : 'text-indigo-200 hover:bg-white/10 hover:text-white'
+                      isActive ? 'bg-white/15 text-white' : 'text-indigo-50 hover:bg-white/10 hover:text-white'
                     }`
                   }
                 >

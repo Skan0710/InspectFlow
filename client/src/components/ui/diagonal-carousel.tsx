@@ -127,7 +127,7 @@ export function DiagonalCarousel({
     >
       <div className={cn("absolute inset-0 overflow-hidden", viewportClassName)}>
         <motion.div
-          className="absolute left-1/2 top-[8%] flex w-fit"
+          className="absolute left-[36%] top-[8%] flex w-fit"
           animate={{ x: -(currentIndex * safeSlideSize + safeSlideSize / 2) }}
           transition={transition}
         >

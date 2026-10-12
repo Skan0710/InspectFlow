@@ -5,7 +5,6 @@ import {
   Layers, 
   CheckCircle2, 
   ArrowRight, 
-  Sparkles,
   ShieldCheck
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
@@ -137,10 +136,6 @@ export const ProductStorySection: React.FC = () => {
     <section ref={containerRef} className="py-10 space-y-8">
       {/* Section Header */}
       <div className="story-header text-center max-w-3xl mx-auto space-y-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50/80 px-3.5 py-1 text-xs font-semibold text-indigo-700 shadow-2xs">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-          End-to-End Analytical Architecture
-        </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
           The InsightFlow Journey:{' '}
           <span className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
@@ -214,18 +209,14 @@ export const ProductStorySection: React.FC = () => {
       <div className="rounded-2xl border border-indigo-400/25 bg-gradient-to-b from-indigo-950 via-[#171553] to-indigo-950 p-6 text-white shadow-xl overflow-hidden relative">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-semibold text-indigo-300">
-              <Sparkles className="h-3 w-3 text-indigo-400" />
-              Interactive Pipeline Showcase
-            </div>
             <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-1.5">
               3D Architecture Flow
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-200 mt-0.5">
               Slide through the five core engines powering verified customer intelligence.
             </p>
           </div>
-          <span className="text-xs text-slate-400 font-mono hidden sm:inline-block">Use arrows or drag to explore</span>
+          <span className="text-xs text-slate-200 font-mono hidden sm:inline-block">Use arrows or drag to explore</span>
         </div>
         <div className="h-[480px] sm:h-[540px] w-full relative">
           <DiagonalCarousel
@@ -238,7 +229,7 @@ export const ProductStorySection: React.FC = () => {
             imageClassName="ring-1 ring-white/25 shadow-2xl shadow-black/40"
             labelClassName="text-indigo-100 font-medium"
             controlsClassName="border-white/20 bg-indigo-950/80 text-white backdrop-blur-md"
-            className="h-full"
+            className="h-full overflow-visible" viewportClassName="overflow-visible"
           />
         </div>
       </div>

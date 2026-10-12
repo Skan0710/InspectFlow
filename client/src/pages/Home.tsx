@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -113,14 +114,14 @@ export const Home: React.FC = () => {
               <ArrowRight className="h-4 w-4" />
             </Link>
 
-            <button
-              onClick={fetchHealth}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh Backend Ping
-            </button>
+            <Button
+          variant="outline"
+          onClick={fetchHealth}
+          disabled={loading}
+          leftIcon={<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />}
+        >
+          Refresh Backend Ping
+        </Button>
           </div>
         </div>
       </motion.div>

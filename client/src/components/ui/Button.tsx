@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import { AnimatedButton } from './animated-button';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -14,15 +15,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 border border-transparent shadow-xs focus-visible:ring-indigo-500',
+    'bg-indigo-500 text-white hover:bg-indigo-400 active:bg-indigo-600 border border-white/20 shadow-lg shadow-indigo-950/40',
   secondary:
-    'bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 border border-transparent shadow-xs focus-visible:ring-slate-900',
+    'bg-indigo-950 text-white hover:bg-indigo-900 active:bg-black border border-white/20 shadow-lg shadow-black/30',
   outline:
-    'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900 shadow-xs focus-visible:ring-indigo-500',
+    'bg-white/10 text-white border border-white/30 hover:bg-white/20 active:bg-white/25 backdrop-blur-sm',
   ghost:
-    'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent focus-visible:ring-slate-400',
+    'bg-transparent text-white hover:bg-white/15 active:bg-white/20 border border-transparent',
   danger:
-    'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 border border-transparent shadow-xs focus-visible:ring-rose-500',
+    'bg-rose-500 text-white hover:bg-rose-400 active:bg-rose-600 border border-white/20 shadow-lg shadow-rose-950/40',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -47,11 +48,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     return (
-      <button
+      <AnimatedButton
         ref={ref}
         disabled={disabled || isLoading}
-        className={`inline-flex items-center justify-center font-medium transition-all select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
-        {...props}
+        className={`gap-2 ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+        {...(props as Record<string, unknown>)}
       >
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin shrink-0" />
@@ -60,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         <span>{children}</span>
         {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
-      </button>
+      </AnimatedButton>
     );
   }
 );

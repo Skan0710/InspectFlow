@@ -210,10 +210,6 @@ export const WorkflowFeatureBento: React.FC = () => {
       {/* Header with Mintlify-style clean typography */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 pb-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200/80 bg-indigo-50/60 px-3 py-0.5 text-xs font-semibold text-indigo-700 mb-2">
-            <Sparkles className="h-3 w-3 text-indigo-600" />
-            21st.dev & Mintlify Architecture Design
-          </div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             Engineered for Grounded Customer Intelligence
           </h2>
@@ -330,10 +326,6 @@ export const WorkflowFeatureBento: React.FC = () => {
       {/* Interactive Expandable Bento Grid */}
       <div className="mt-8 pt-6 border-t border-slate-200/80">
         <div className="mb-4">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50/80 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700">
-            <Sparkles className="h-3 w-3 text-indigo-600" />
-            Expandable Architecture Cards
-          </div>
           <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
             Deep-Dive into System Subsystems
           </h3>
