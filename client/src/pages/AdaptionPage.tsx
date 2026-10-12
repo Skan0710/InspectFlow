@@ -787,20 +787,21 @@ export const AdaptionPage: React.FC = () => {
 
                 {/* Tab 2: Empirical Evaluation Benchmark */}
                 {activeTab === 'evaluation' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
+                  <div className="space-y-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900">Baseline vs. Adaption-Enhanced Comparison</h4>
-                        <p className="text-xs text-slate-500">
+                        <h4 className="text-base sm:text-lg font-bold text-slate-900">Baseline vs. Adaption-Enhanced Comparison</h4>
+                        <p className="text-sm text-slate-500 mt-0.5">
                           Empirical measurement on isolated test records (guaranteed leakage-free).
                         </p>
                       </div>
                       <Button
                         variant="primary"
-                        size="sm"
+                        size="md"
                         onClick={handleRunEvaluation}
                         isLoading={isEvaluating}
-                        leftIcon={<Award className="h-3.5 w-3.5" />}
+                        leftIcon={<Award className="h-4 w-4" />}
+                        className="cta-focus-glow font-bold text-sm px-4"
                       >
                         Run Benchmark Evaluation
                       </Button>
@@ -808,57 +809,57 @@ export const AdaptionPage: React.FC = () => {
 
                     {evaluation ? (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
-                            <div className="text-slate-500">Structured JSON Validity</div>
-                            <div className="text-base font-bold text-slate-900 mt-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80">
+                            <div className="text-xs sm:text-sm font-medium text-slate-600">Structured JSON Validity</div>
+                            <div className="text-lg sm:text-xl font-black text-slate-900 mt-1.5">
                               {(evaluation.baseline.validStructuredOutputRate * 100).toFixed(0)}% → <span className="text-emerald-600">{(evaluation.adapted.validStructuredOutputRate * 100).toFixed(0)}%</span>
                             </div>
-                            <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                            <div className="text-xs text-emerald-600 font-bold mt-1">
                               {evaluation.delta.structuredOutputDiff >= 0 ? `+${(evaluation.delta.structuredOutputDiff * 100).toFixed(1)}%` : `${(evaluation.delta.structuredOutputDiff * 100).toFixed(1)}%`}
                             </div>
                           </div>
 
-                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
-                            <div className="text-slate-500">Category Consistency</div>
-                            <div className="text-base font-bold text-slate-900 mt-1">
+                          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80">
+                            <div className="text-xs sm:text-sm font-medium text-slate-600">Category Consistency</div>
+                            <div className="text-lg sm:text-xl font-black text-slate-900 mt-1.5">
                               {(evaluation.baseline.categoryAgreementRate * 100).toFixed(0)}% → <span className="text-indigo-600">{(evaluation.adapted.categoryAgreementRate * 100).toFixed(0)}%</span>
                             </div>
-                            <div className="text-[10px] text-indigo-600 font-semibold mt-0.5">
+                            <div className="text-xs text-indigo-600 font-bold mt-1">
                               {evaluation.delta.categoryAgreementDiff >= 0 ? `+${(evaluation.delta.categoryAgreementDiff * 100).toFixed(1)}%` : `${(evaluation.delta.categoryAgreementDiff * 100).toFixed(1)}%`}
                             </div>
                           </div>
 
-                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
-                            <div className="text-slate-500">Evidence Grounding</div>
-                            <div className="text-base font-bold text-slate-900 mt-1">
+                          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80">
+                            <div className="text-xs sm:text-sm font-medium text-slate-600">Evidence Grounding</div>
+                            <div className="text-lg sm:text-xl font-black text-slate-900 mt-1.5">
                               {(evaluation.baseline.evidenceGroundingRate * 100).toFixed(0)}% → <span className="text-purple-600">{(evaluation.adapted.evidenceGroundingRate * 100).toFixed(0)}%</span>
                             </div>
-                            <div className="text-[10px] text-purple-600 font-semibold mt-0.5">
+                            <div className="text-xs text-purple-600 font-bold mt-1">
                               {evaluation.delta.groundingDiff >= 0 ? `+${(evaluation.delta.groundingDiff * 100).toFixed(1)}%` : `${(evaluation.delta.groundingDiff * 100).toFixed(1)}%`}
                             </div>
                           </div>
 
-                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
-                            <div className="text-slate-500">Average Confidence</div>
-                            <div className="text-base font-bold text-slate-900 mt-1">
+                          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80">
+                            <div className="text-xs sm:text-sm font-medium text-slate-600">Average Confidence</div>
+                            <div className="text-lg sm:text-xl font-black text-slate-900 mt-1.5">
                               {evaluation.baseline.avgConfidence.toFixed(2)} → <span className="text-emerald-600">{evaluation.adapted.avgConfidence.toFixed(2)}</span>
                             </div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">
+                            <div className="text-xs text-slate-500 font-medium mt-1">
                               Latency: {evaluation.adapted.avgLatencyMs}ms ({evaluation.delta.latencyDiffMs >= 0 ? `+${evaluation.delta.latencyDiffMs}ms` : `${evaluation.delta.latencyDiffMs}ms`})
                             </div>
                           </div>
                         </div>
 
-                        <div className="rounded-lg bg-indigo-50/70 border border-indigo-100 p-3 space-y-1.5 text-xs text-indigo-900">
-                          <div className="flex items-center gap-1.5 font-semibold text-indigo-950">
-                            <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                        <div className="rounded-xl bg-indigo-50/80 border border-indigo-100 p-4 space-y-2 text-sm text-indigo-950">
+                          <div className="flex items-center gap-2 font-bold text-indigo-950">
+                            <ShieldCheck className="h-5 w-5 text-indigo-600" />
                             <span>Evaluation Transparency & Methodology</span>
                           </div>
-                          <p className="text-[11px] leading-relaxed text-indigo-900">
+                          <p className="text-xs sm:text-sm leading-relaxed text-indigo-900">
                             {evaluation.limitations}
                           </p>
-                          <p className="text-[11px] text-indigo-700 leading-relaxed">
+                          <p className="text-xs sm:text-sm text-indigo-800 leading-relaxed font-medium">
                             {evaluation.sourceCategoryDisclaimer}
                           </p>
                         </div>
