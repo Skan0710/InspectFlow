@@ -4,6 +4,7 @@
   "description": "InsightFlow API Server",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

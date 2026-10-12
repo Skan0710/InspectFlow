@@ -17,8 +17,11 @@ import adaptionRoutes from './routes/adaption.js';
 import reportRoutes from './routes/reports.js';
 import chatRoutes from './routes/chat.js';
 import authRoutes from './routes/auth.js';
+import path from 'path';
 
-dotenv.config();
+// Load root project .env — try both possible cwd locations (running from server/ or from root)
+dotenv.config({ path: path.resolve(process.cwd(), '..', '.env'), override: true });
+dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: false });
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
@@ -38,6 +41,8 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (
       allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      (process.env.VERCEL_URL && origin.includes(process.env.VERCEL_URL)) ||
       (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
     ) {
       return callback(null, true);
@@ -240,30 +245,32 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   }
 });
 
-// Start Server
-app.listen(PORT, () => {
-  const dbConfig = getDatabaseConfig();
-  console.log(`🚀 InsightFlow server running on http://localhost:${PORT}`);
-  console.log(`📡 Health check available at http://localhost:${PORT}/api/health`);
-  console.log(`📡 DB health check available at http://localhost:${PORT}/api/health/db`);
+// Start Server (only listen when running outside Vercel serverless functions)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    const dbConfig = getDatabaseConfig();
+    console.log(`🚀 InsightFlow server running on http://localhost:${PORT}`);
+    console.log(`📡 Health check available at http://localhost:${PORT}/api/health`);
+    console.log(`📡 DB health check available at http://localhost:${PORT}/api/health/db`);
 
-  if (!dbConfig.isConfigured) {
-    console.log(
-      `⚠️  Database is unconfigured. Missing: ${dbConfig.missingVariables.join(
-        ', '
-      )}. Direct DB endpoints will report 503 until configured.`
-    );
-  } else {
-    console.log('✅ Database configuration detected in environment.');
-  }
+    if (!dbConfig.isConfigured) {
+      console.log(
+        `⚠️  Database is unconfigured. Missing: ${dbConfig.missingVariables.join(
+          ', '
+        )}. Direct DB endpoints will report 503 until configured.`
+      );
+    } else {
+      console.log('✅ Database configuration detected in environment.');
+    }
 
-  const aiStatus = getAIStatus();
-  console.log(`📡 AI health check available at http://localhost:${PORT}/api/health/ai`);
-  if (!aiStatus.configured) {
-    console.log(`⚠️  AI Provider is unconfigured (${aiStatus.provider}). Real model analysis will report unconfigured until credentials are supplied.`);
-  } else {
-    console.log(`🤖 AI Provider configured: ${aiStatus.provider} (model: ${aiStatus.model})`);
-  }
-});
+    const aiStatus = getAIStatus();
+    console.log(`📡 AI health check available at http://localhost:${PORT}/api/health/ai`);
+    if (!aiStatus.configured) {
+      console.log(`⚠️  AI Provider is unconfigured (${aiStatus.provider}). Real model analysis will report unconfigured until credentials are supplied.`);
+    } else {
+      console.log(`🤖 AI Provider configured: ${aiStatus.provider} (model: ${aiStatus.model})`);
+    }
+  });
+}
 
 export default app;
