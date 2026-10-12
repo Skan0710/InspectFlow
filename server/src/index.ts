@@ -23,6 +23,15 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env'), override: true });
 dotenv.config({ path: path.resolve(process.cwd(), '.env'), override: false });
 
+// A stray rejected promise (e.g. a failed database write) must not take the whole API down,
+// otherwise every in-flight and later request fails until the process is restarted.
+process.on('unhandledRejection', (reason) => {
+  console.error('[Process] Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[Process] Uncaught exception:', err);
+});
+
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';

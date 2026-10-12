@@ -54,7 +54,13 @@ const UPLOAD_DIR = resolveUploadDirectory();
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_DIR);
+    // The folder can disappear while the server runs (cleanup, repo clean); recreate it instead of failing the upload
+    try {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      cb(null, UPLOAD_DIR);
+    } catch (err) {
+      cb(err as Error, UPLOAD_DIR);
+    }
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;

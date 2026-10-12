@@ -256,3 +256,14 @@ export async function sendChatMessage(
   }
   return res.json();
 }
+
+/** Shown when the API is down or restarting: the dev proxy then answers 5xx with an empty body. */
+export const SERVER_UNREACHABLE_MESSAGE =
+  'The InsightFlow server is not responding. Make sure the API is running (npm run dev in the server folder), then try again.';
+
+/** Best human message for a failed fetch: the server's own message, a connectivity hint, or the status code. */
+export function describeRequestFailure(res: Response | null, body: { message?: string } | null, fallback: string): string {
+  if (body?.message) return body.message;
+  if (!res || res.status >= 502 || (res.status === 500 && !body?.message)) return SERVER_UNREACHABLE_MESSAGE;
+  return `${fallback} (HTTP ${res.status})`;
+}

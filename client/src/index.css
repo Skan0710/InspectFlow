@@ -203,6 +203,35 @@ html.lenis body {
 .app-theme .page-header::after { background: linear-gradient(90deg, rgba(165, 180, 252, 0.35), transparent 70%); }
 .app-theme .kpi-tile:hover { border-color: rgba(165, 180, 252, 0.45); }
 
+/* ---- Controls: every button and dropdown has a clear white border ---- */
+button:not([class*="underline"]):not([aria-label*="password" i]),
+select {
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+}
+button:not([class*="underline"]):not([aria-label*="password" i]):hover:not(:disabled),
+select:hover,
+select:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+button:disabled { border-color: rgba(255, 255, 255, 0.4); }
+
+/* Controls without a solid fill of their own get an opaque indigo one so the border reads */
+button[class*="bg-transparent"]:not([class*="underline"]),
+button[class*="bg-white/"]:not([class*="underline"]),
+button[class*="bg-slate-50"],
+button[class*="bg-slate-100"],
+button[class*="bg-slate-200"],
+select {
+  background-color: #1e1b4b;
+  color: #ffffff;
+}
+select[aria-invalid="true"] { border-color: #fda4af; }
+select option { background-color: #1e1b4b; color: #ffffff; }
+
+/* Badge dismiss buttons stay bare */
+[class*="badge"] button { border: 0; background: transparent; box-shadow: none; }
+
 /* High-emphasis CTA Glow & Pulse */
 .cta-focus-glow {
   position: relative;

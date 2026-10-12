@@ -15,6 +15,14 @@ import type {
   ExemplarLibraryMetadata,
 } from './types.js';
 
+/** Raised when a run is requested but no feedback matches the chosen source. A client error, not a server fault. */
+export class NoFeedbackError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NoFeedbackError';
+  }
+}
+
 export class AdaptionService {
   private client: AdaptionApiClient;
   private preparer: DatasetPreparer;
@@ -170,7 +178,12 @@ export class AdaptionService {
     });
 
     if (prepared.pairs.length === 0) {
-      throw new Error('No valid customer feedback records available to prepare for Adaption.');
+      const source = options.datasetType || 'all';
+      throw new NoFeedbackError(
+        source === 'all'
+          ? 'There is no feedback to adapt yet. Import a CSV on the Feedback page first.'
+          : `No feedback records match the "${source}" source. Import a CSV on the Feedback page, or pick "All Feedback Records".`
+      );
     }
 
     const runId = `ds_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;

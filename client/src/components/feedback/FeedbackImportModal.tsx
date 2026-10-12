@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { describeRequestFailure, SERVER_UNREACHABLE_MESSAGE } from '../../api/client';
 import { 
   UploadCloud, 
   FileText, 
@@ -98,14 +99,14 @@ export const FeedbackImportModal: React.FC<FeedbackImportModalProps> = ({
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.message || `Import failed (HTTP ${res.status})`);
+        throw new Error(describeRequestFailure(res, data, 'Import failed'));
       }
 
       setProgressStep('Finalizing batch metrics...');
       setResultSummary(data.summary);
       onImportSuccess(data.summary);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to import CSV';
+      const msg = err instanceof TypeError ? SERVER_UNREACHABLE_MESSAGE : err instanceof Error ? err.message : 'Failed to import CSV';
       setErrorMessage(msg);
     } finally {
       setIsUploading(false);

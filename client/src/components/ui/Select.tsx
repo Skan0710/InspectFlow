@@ -26,10 +26,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             disabled={disabled}
+            aria-invalid={error ? true : undefined}
             className={`w-full appearance-none rounded-lg border bg-white px-3.5 py-2 pr-9 text-sm text-slate-900 transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 ${
               error
                 ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                : 'border-slate-300 hover:border-slate-400 focus:border-indigo-600 focus:ring-indigo-500/20'
+                : 'border-white/90 hover:border-white focus:border-white focus:ring-white/20'
             } ${className}`}
             {...props}
           >

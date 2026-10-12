@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { AdaptionService } from '../services/adaption/adaptionService.js';
+import { AdaptionService, NoFeedbackError } from '../services/adaption/adaptionService.js';
 
 const router = Router();
 const adaptionService = new AdaptionService();
@@ -186,6 +186,11 @@ router.post('/runs', async (req: Request, res: Response) => {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to start Adaption run';
+    if (err instanceof NoFeedbackError) {
+      res.status(422).json({ error: 'NoFeedback', message });
+      return;
+    }
+    console.error('[AdaptionRoute] Run failed:', err);
     res.status(500).json({
       error: 'ExecutionError',
       message,

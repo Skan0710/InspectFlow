@@ -20,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { StatsCounter } from '../components/ui/stats-counter';
+import { describeRequestFailure, SERVER_UNREACHABLE_MESSAGE } from '../api/client';
 import type {
   AdaptionRunRecord,
   AdaptionProviderStatus,
@@ -240,10 +241,10 @@ export const AdaptionPage: React.FC = () => {
         setRunError(null);
       } else {
         const errorJson = await res.json().catch(() => ({}));
-        setRunError(errorJson.message || 'Adaption workflow request failed.');
+        setRunError(describeRequestFailure(res, errorJson, 'Adaption run failed'));
       }
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : String(err));
+      setRunError(err instanceof TypeError ? SERVER_UNREACHABLE_MESSAGE : err instanceof Error ? err.message : String(err));
     } finally {
       setIsExecuting(false);
     }
