@@ -19,7 +19,7 @@ const fieldClass =
   'w-full rounded-xl border border-white/15 bg-white/10 py-3 pl-11 pr-4 text-base text-white placeholder:text-indigo-200/70 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-300/40 disabled:opacity-60';
 
 export const SignInModal: React.FC = () => {
-  const { modalOpen, closeSignIn, status, returnTo, configured, signInWithPassword, signUp, signInWithGoogle, signInDemo } =
+  const { modalOpen, closeSignIn, clearReturnTo, status, returnTo, configured, signInWithPassword, signUp, signInWithGoogle, signInDemo } =
     useAuth();
   const navigate = useNavigate();
   const emailRef = useRef<HTMLInputElement>(null);
@@ -31,14 +31,28 @@ export const SignInModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const hasRedirectedRef = useRef(false);
 
   // Once signed in (password or the Google redirect), close the dialog and go where the visitor was headed
   useEffect(() => {
-    if (status !== 'authenticated') return;
-    const target = returnTo ?? consumeReturnTo();
-    if (modalOpen) closeSignIn();
-    if (target && target !== '/') navigate(target, { replace: true });
-  }, [status, modalOpen, returnTo, closeSignIn, navigate]);
+    if (status !== 'authenticated') {
+      hasRedirectedRef.current = false;
+      return;
+    }
+    if (hasRedirectedRef.current) return;
+
+    const target = returnTo || consumeReturnTo();
+    if (returnTo) {
+      clearReturnTo();
+    }
+    if (modalOpen) {
+      closeSignIn();
+    }
+    hasRedirectedRef.current = true;
+    if (target && target !== '/' && target !== window.location.pathname) {
+      navigate(target, { replace: true });
+    }
+  }, [status, modalOpen, returnTo, closeSignIn, clearReturnTo, navigate]);
 
   useEffect(() => {
     if (!modalOpen) return;

@@ -20,6 +20,7 @@ interface AuthContextValue {
   returnTo: string | null;
   openSignIn: (returnTo?: string) => void;
   closeSignIn: () => void;
+  clearReturnTo: () => void;
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
@@ -147,7 +148,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setModalOpen(true);
   }, []);
 
-  const closeSignIn = useCallback(() => setModalOpen(false), []);
+  const clearReturnTo = useCallback(() => {
+    setReturnTo(null);
+    try {
+      sessionStorage.removeItem(RETURN_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const closeSignIn = useCallback(() => {
+    setModalOpen(false);
+    clearReturnTo();
+  }, [clearReturnTo]);
 
   const signInDemo = useCallback((custom?: { email?: string; name?: string; role?: string; provider?: 'demo' | 'google' }) => {
     const mock = createMockUser(custom);
@@ -216,10 +229,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = useCallback(async () => {
     try {
       localStorage.removeItem(DEMO_SESSION_KEY);
+      sessionStorage.removeItem(RETURN_KEY);
     } catch {
       // ignore
     }
     setDemoUser(null);
+    setReturnTo(null);
     if (supabase) await supabase.auth.signOut();
     resetProfile();
   }, []);
@@ -233,13 +248,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       returnTo,
       openSignIn,
       closeSignIn,
+      clearReturnTo,
       signInWithPassword,
       signUp,
       signInWithGoogle,
       signInDemo,
       signOut,
     }),
-    [loading, user, modalOpen, returnTo, openSignIn, closeSignIn, signInWithPassword, signUp, signInWithGoogle, signInDemo, signOut],
+    [loading, user, modalOpen, returnTo, openSignIn, closeSignIn, clearReturnTo, signInWithPassword, signUp, signInWithGoogle, signInDemo, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

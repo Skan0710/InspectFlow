@@ -17,7 +17,14 @@ export const GuestLanding: React.FC = () => {
 
   // A guest sent here from a private route gets the dialog straight away
   useEffect(() => {
-    if (from) openSignIn(from);
+    if (from) {
+      openSignIn(from);
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {
+        // ignore
+      }
+    }
   }, [from, openSignIn]);
 
   return (
