@@ -6,6 +6,7 @@ import {
   Sparkles,
   CheckSquare,
   FileBarChart,
+  BrainCircuit,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -45,6 +46,13 @@ export const navigationItems: NavItem[] = [
     icon: CheckSquare,
     badge: '4',
     badgeVariant: 'warning',
+  },
+  {
+    label: 'Adaption Labs',
+    path: '/adaption',
+    icon: BrainCircuit,
+    badge: 'Eval',
+    badgeVariant: 'indigo',
   },
   {
     label: 'Reports',

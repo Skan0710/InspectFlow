@@ -6,6 +6,7 @@ import { FeedbackPage } from './pages/FeedbackPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { ActionCenterPage } from './pages/ActionCenterPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { AdaptionPage } from './pages/AdaptionPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 export const App: React.FC = () => {
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/actions" element={<ActionCenterPage />} />
+          <Route path="/adaption" element={<AdaptionPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/* Catch-all redirect */}

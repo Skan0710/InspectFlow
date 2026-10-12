@@ -11,6 +11,8 @@ import type { IssueStatus, IssueNote, StatusHistoryEntry, IssueDetailResponse } 
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
+import type { AdaptionRunRecord } from './adaption/types.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,6 +24,7 @@ const RUNS_FILE = path.join(DATA_DIR, 'analysis_runs.json');
 const ISSUES_FILE = path.join(DATA_DIR, 'issues.json');
 const ISSUE_FEEDBACK_FILE = path.join(DATA_DIR, 'issue_feedback.json');
 const CLUSTERING_RUNS_FILE = path.join(DATA_DIR, 'clustering_runs.json');
+const ADAPTION_RUNS_FILE = path.join(DATA_DIR, 'adaption_runs.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -39,6 +42,7 @@ export class FeedbackStore {
   private issueFeedback: Map<string, IssueFeedbackLink[]> = new Map();
   private clusteringRuns: ClusteringResult[] = [];
   private recommendations: Map<string, IssueRecommendation> = new Map();
+  private adaptionRuns: Map<string, AdaptionRunRecord> = new Map();
   private scoringService = new PriorityScoringService();
 
   private constructor() {
@@ -144,6 +148,13 @@ export class FeedbackStore {
       if (clusteringRunsList) {
         this.clusteringRuns = clusteringRunsList;
       }
+
+      const adaptionRunsList = safeParse<AdaptionRunRecord[]>(ADAPTION_RUNS_FILE);
+      if (adaptionRunsList) {
+        for (const item of adaptionRunsList) {
+          this.adaptionRuns.set(item.id, item);
+        }
+      }
     } catch (err) {
       console.warn('[FeedbackStore] Failed to load state from disk:', err);
     }
@@ -165,6 +176,7 @@ export class FeedbackStore {
       }
       fs.writeFileSync(ISSUE_FEEDBACK_FILE, JSON.stringify(allLinks), 'utf8');
       fs.writeFileSync(CLUSTERING_RUNS_FILE, JSON.stringify(this.clusteringRuns), 'utf8');
+      fs.writeFileSync(ADAPTION_RUNS_FILE, JSON.stringify(Array.from(this.adaptionRuns.values())), 'utf8');
     } catch (err) {
       console.error('[FeedbackStore] Failed to persist data to disk:', err);
     }
@@ -384,6 +396,7 @@ export class FeedbackStore {
       this.issueFeedback.clear();
       this.clusteringRuns = [];
       this.recommendations.clear();
+      this.adaptionRuns.clear();
     } else if (scope === 'sample_only') {
       const remaining = this.records.filter((r) => !r.isSample);
       removedCount = initialCount - remaining.length;
@@ -1459,5 +1472,62 @@ export class FeedbackStore {
 
   public getAllRecommendations(): IssueRecommendation[] {
     return Array.from(this.recommendations.values());
+  }
+
+  public async saveAdaptionRun(run: AdaptionRunRecord): Promise<void> {
+    this.adaptionRuns.set(run.id, run);
+    this.flushToDisk();
+
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        const sql = `
+          INSERT INTO adaption_runs (
+            id, name, dataset_version, status, records_count, training_type, column_mapping,
+            quality, sample_pairs, benchmark_integrated, raw_results, error_message, is_mock,
+            created_at, updated_at, completed_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          ON CONFLICT (id) DO UPDATE SET
+            status = EXCLUDED.status,
+            quality = EXCLUDED.quality,
+            sample_pairs = EXCLUDED.sample_pairs,
+            benchmark_integrated = EXCLUDED.benchmark_integrated,
+            raw_results = EXCLUDED.raw_results,
+            error_message = EXCLUDED.error_message,
+            updated_at = EXCLUDED.updated_at,
+            completed_at = EXCLUDED.completed_at;
+        `;
+        await pool.query(sql, [
+          run.id,
+          run.name,
+          run.datasetVersion,
+          run.status,
+          run.recordsCount,
+          run.trainingType,
+          JSON.stringify(run.columnMapping),
+          run.quality ? JSON.stringify(run.quality) : null,
+          JSON.stringify(run.samplePairs),
+          run.benchmarkIntegrated,
+          run.rawResults ? JSON.stringify(run.rawResults) : null,
+          run.errorMessage || null,
+          run.isMock,
+          run.createdAt,
+          run.updatedAt,
+          run.completedAt || null,
+        ]);
+      } catch (err) {
+        console.warn('[FeedbackStore] DB persistence for adaption_runs skipped/failed:', err);
+      }
+    }
+  }
+
+  public getAdaptionRunById(id: string): AdaptionRunRecord | null {
+    return this.adaptionRuns.get(id) || null;
+  }
+
+  public getAdaptionRuns(): AdaptionRunRecord[] {
+    const runs = Array.from(this.adaptionRuns.values());
+    return runs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
