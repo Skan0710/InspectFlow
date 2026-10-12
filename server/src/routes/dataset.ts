@@ -11,8 +11,23 @@ const store = FeedbackStore.getInstance();
  * and reporting that analysis has not yet run.
  */
 router.get('/status', (_req: Request, res: Response) => {
-  const status = store.getDatasetStatus();
-  res.status(200).json(status);
+  try {
+    const status = store.getDatasetStatus();
+    res.status(200).json(status);
+  } catch (err: unknown) {
+    console.error('[DatasetRoute] Error getting dataset status:', err);
+    res.status(200).json({
+      totalRecords: 0,
+      genuineCount: 0,
+      sampleCount: 0,
+      categories: {},
+      activeDatasetType: 'empty',
+      lastImportAt: null,
+      lastBatchId: null,
+      analysisStatus: 'not_started',
+      hasAnalysisRun: false,
+    });
+  }
 });
 
 /**

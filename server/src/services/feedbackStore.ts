@@ -15,10 +15,44 @@ import { getPgPool } from '../db/client.js';
 import type { AdaptionRunRecord, AdaptionEvaluationComparison } from './adaption/types.js';
 import type { ReportRecord } from '../types/reports.js';
 
+import os from 'node:os';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DATA_DIR = path.resolve(__dirname, '../../data/imports');
+function resolveDataDirectory(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpDataDir = path.join(os.tmpdir(), 'insightflow-data-imports');
+    try {
+      if (!fs.existsSync(tmpDataDir)) {
+        fs.mkdirSync(tmpDataDir, { recursive: true });
+      }
+      return tmpDataDir;
+    } catch {
+      return os.tmpdir();
+    }
+  }
+
+  const localDir = path.resolve(__dirname, '../../data/imports');
+  try {
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+    return localDir;
+  } catch {
+    const tmpFallback = path.join(os.tmpdir(), 'insightflow-data-imports');
+    try {
+      if (!fs.existsSync(tmpFallback)) {
+        fs.mkdirSync(tmpFallback, { recursive: true });
+      }
+      return tmpFallback;
+    } catch {
+      return os.tmpdir();
+    }
+  }
+}
+
+const DATA_DIR = resolveDataDirectory();
 const BATCHES_FILE = path.join(DATA_DIR, 'batches.json');
 const RECORDS_FILE = path.join(DATA_DIR, 'records.json');
 const ANALYSES_FILE = path.join(DATA_DIR, 'analyses.json');
@@ -29,11 +63,6 @@ const CLUSTERING_RUNS_FILE = path.join(DATA_DIR, 'clustering_runs.json');
 const ADAPTION_RUNS_FILE = path.join(DATA_DIR, 'adaption_runs.json');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 const EVALUATION_FILE = path.join(DATA_DIR, 'latest_evaluation.json');
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
 
 export class FeedbackStore {
   private static instance: FeedbackStore;
@@ -838,18 +867,21 @@ export class FeedbackStore {
   }
 
   public getDatasetStatus(): DatasetStatus {
-    const totalRecords = this.records.length;
+    const records = Array.isArray(this.records) ? this.records : [];
+    const totalRecords = records.length;
     let genuineCount = 0;
     let sampleCount = 0;
     const categories: Record<string, number> = {};
 
-    for (const rec of this.records) {
+    for (const rec of records) {
+      if (!rec) continue;
       if (rec.isSample) {
         sampleCount++;
       } else {
         genuineCount++;
       }
-      categories[rec.category] = (categories[rec.category] || 0) + 1;
+      const cat = rec.category || 'General Feedback';
+      categories[cat] = (categories[cat] || 0) + 1;
     }
 
     let activeDatasetType: 'empty' | 'genuine' | 'sample' | 'mixed' = 'empty';
@@ -864,10 +896,11 @@ export class FeedbackStore {
     }
 
     const batches = this.getBatches();
-    const lastBatch = batches[0] || null;
-    const hasAnalysisRun = this.analyses.size > 0;
+    const lastBatch = batches && batches.length > 0 ? batches[0] : null;
+    const analysesCount = this.analyses ? this.analyses.size : 0;
+    const hasAnalysisRun = analysesCount > 0;
     const analysisStatus = hasAnalysisRun
-      ? (this.analyses.size >= totalRecords && totalRecords > 0 ? 'completed' : 'running')
+      ? (analysesCount >= totalRecords && totalRecords > 0 ? 'completed' : 'running')
       : 'not_started';
 
     return {

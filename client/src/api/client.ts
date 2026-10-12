@@ -40,11 +40,29 @@ export async function fetchAnalyticsMetrics(
 }
 
 export async function fetchDatasetStatus(): Promise<DatasetStatus> {
-  const res = await fetch('/api/dataset/status');
-  if (!res.ok) {
-    throw new Error(`Failed to fetch dataset status (HTTP ${res.status})`);
+  const fallbackStatus: DatasetStatus = {
+    totalRecords: 0,
+    genuineCount: 0,
+    sampleCount: 0,
+    categories: {},
+    activeDatasetType: 'empty',
+    lastImportAt: null,
+    lastBatchId: null,
+    analysisStatus: 'not_started',
+    hasAnalysisRun: false,
+  };
+
+  try {
+    const res = await fetch('/api/dataset/status');
+    if (!res.ok) {
+      console.warn(`[API] /api/dataset/status returned HTTP ${res.status}, using fallback.`);
+      return fallbackStatus;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('[API] /api/dataset/status network error, using fallback:', err);
+    return fallbackStatus;
   }
-  return res.json();
 }
 
 export async function seedSampleDataset(reset: boolean = false): Promise<any> {

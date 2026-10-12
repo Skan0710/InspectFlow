@@ -15,11 +15,42 @@ const __dirname = path.dirname(__filename);
 const router = Router();
 const store = FeedbackStore.getInstance();
 
-// Configure Multer storage to stream file to disk before processing
-const UPLOAD_DIR = path.resolve(__dirname, '../../uploads/temp');
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+import os from 'node:os';
+
+function resolveUploadDirectory(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpUpload = path.join(os.tmpdir(), 'insightflow-uploads-temp');
+    try {
+      if (!fs.existsSync(tmpUpload)) {
+        fs.mkdirSync(tmpUpload, { recursive: true });
+      }
+      return tmpUpload;
+    } catch {
+      return os.tmpdir();
+    }
+  }
+
+  const localUpload = path.resolve(__dirname, '../../uploads/temp');
+  try {
+    if (!fs.existsSync(localUpload)) {
+      fs.mkdirSync(localUpload, { recursive: true });
+    }
+    return localUpload;
+  } catch {
+    const tmpFallback = path.join(os.tmpdir(), 'insightflow-uploads-temp');
+    try {
+      if (!fs.existsSync(tmpFallback)) {
+        fs.mkdirSync(tmpFallback, { recursive: true });
+      }
+      return tmpFallback;
+    } catch {
+      return os.tmpdir();
+    }
+  }
 }
+
+// Configure Multer storage to stream file to disk before processing
+const UPLOAD_DIR = resolveUploadDirectory();
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
