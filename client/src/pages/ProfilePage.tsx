@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Building2,
   CheckCircle2,
-  Database,
-  FileBarChart,
   Mail,
   Save,
-  Settings,
   UserRound,
   Briefcase,
-  RotateCcw,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -19,8 +14,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Badge } from '../components/ui/Badge';
 import { fetchDatasetStatus } from '../api/client';
 import type { DatasetStatus } from '../types/analytics';
-import { ACCENTS, DEFAULT_PROFILE, getInitials, resetProfile, saveProfile, useProfile, type AccentKey, type UserProfile } from '../lib/profile';
-import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
+import { ACCENTS, getInitials, saveProfile, useProfile, type AccentKey, type UserProfile } from '../lib/profile';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -82,12 +76,6 @@ export const ProfilePage: React.FC = () => {
     setSaved(true);
   };
 
-  const handleReset = () => {
-    resetProfile();
-    setForm(DEFAULT_PROFILE);
-    setSaved(false);
-  };
-
   return (
     <div className="space-y-6">
       {/* Identity banner */}
@@ -145,10 +133,7 @@ export const ProfilePage: React.FC = () => {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Profile details</CardTitle>
-            <CardDescription>
-              Saved in this browser only. InsightFlow has no account system yet, so this is not shared with other
-              devices or teammates.
-            </CardDescription>
+            <CardDescription>Stored in this browser only.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4">
@@ -166,6 +151,8 @@ export const ProfilePage: React.FC = () => {
                   type="email"
                   value={form.email}
                   onChange={update('email')}
+                  readOnly
+                  helperText="Set by your sign-in account"
                   error={emailError}
                   maxLength={120}
                   leftIcon={<Mail className="h-4 w-4" />}
@@ -219,9 +206,7 @@ export const ProfilePage: React.FC = () => {
               </fieldset>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                <Button type="button" variant="ghost" size="sm" onClick={handleReset} leftIcon={<RotateCcw className="h-4 w-4" />}>
-                  Reset profile
-                </Button>
+                <span />
                 <div className="flex items-center gap-3">
                   {saved && !dirty && (
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
@@ -246,28 +231,6 @@ export const ProfilePage: React.FC = () => {
 
         {/* Workspace snapshot & integrations */}
         <div className="space-y-6">
-          {/* Google OAuth Card */}
-          <Card className="border-indigo-100 shadow-sm overflow-hidden">
-            <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50/50 to-white">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Google Identity</CardTitle>
-                {stored.isGoogleAuth ? (
-                  <Badge variant="success" size="sm">Connected</Badge>
-                ) : (
-                  <Badge variant="neutral" size="sm">Unlinked</Badge>
-                )}
-              </div>
-              <CardDescription className="text-xs">
-                {stored.isGoogleAuth
-                  ? 'Authenticated via Google OAuth 2.0 Single Sign-On.'
-                  : 'Sign in with your Google Account for fast, secure profile sync.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-3">
-              <GoogleSignInButton variant="card" />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Workspace snapshot</CardTitle>
@@ -307,27 +270,6 @@ export const ProfilePage: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Shortcuts</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {[
-                { to: '/feedback', label: 'Feedback explorer', icon: Database },
-                { to: '/reports', label: 'Executive reports', icon: FileBarChart },
-                { to: '/settings', label: 'Workspace settings', icon: Settings },
-              ].map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-indigo-50 hover:text-indigo-700"
-                >
-                  <Icon className="h-4 w-4 text-indigo-500" />
-                  {label}
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

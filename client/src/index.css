@@ -172,3 +172,22 @@ html.lenis body {
 @media (prefers-reduced-motion: reduce) {
   .app-theme .kpi-tile:hover { transform: none; }
 }
+
+/* ---- Calm layer: content floats on the one background ---- */
+.app-theme { font-size: 1rem; }
+.app-theme .text-xs { font-size: 0.875rem; line-height: 1.375rem; }
+.app-theme .text-sm { font-size: 1rem; line-height: 1.5rem; }
+.app-theme .text-\[10px\], .app-theme .text-\[11px\] { font-size: 0.8125rem; }
+/* No tiny shouting labels or monospace metadata */
+.app-theme .uppercase { text-transform: none; }
+.app-theme .tracking-wider, .app-theme .tracking-widest, .app-theme .tracking-wide { letter-spacing: 0.005em; }
+.app-theme .font-mono { font-family: inherit; }
+/* Page titles: one clear size */
+.app-theme .page-header h1,
+.app-theme .page-header h2 {
+  font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.5rem);
+  line-height: 1.15;
+}
+/* Hairlines under headers are enough; drop the heavier rule */
+.app-theme .page-header::after { background: linear-gradient(90deg, rgba(165, 180, 252, 0.25), transparent 70%); }
+.app-theme .kpi-tile:hover { border-color: transparent; }

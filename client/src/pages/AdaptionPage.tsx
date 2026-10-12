@@ -5,7 +5,6 @@ import {
   Play,
   FileSpreadsheet,
   AlertCircle,
-  HelpCircle,
   Award,
   Download,
   X,
@@ -18,7 +17,6 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
 import type {
   AdaptionRunRecord,
@@ -143,19 +141,13 @@ export const AdaptionPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <span>Model</span>
-              <FlipText className="text-indigo-300">
-                Adaption Labs
-              </FlipText>
+              <span>Adaption Labs</span>
             </h2>
             <Badge variant="indigo" size="sm" className="font-mono">
               <StatsCounter value={runs.length} /> Evaluations
             </Badge>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Format customer reviews into instruction prompt-completion pairs, run official quality evaluations, and enhance classification accuracy.
-          </p>
-        </div>
+                  </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
@@ -180,118 +172,53 @@ export const AdaptionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Provider Connectivity & System Status Banner */}
-      <Card className="border-indigo-100 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md">
-        <CardContent className="p-4 sm:p-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <BrainCircuit className="h-5 w-5 text-indigo-400" />
-                <span className="font-semibold text-sm sm:text-base tracking-tight">Adaption API Integration Gateway</span>
-                {providerStatus?.isMockMode ? (
-                  <Badge variant="warning" size="sm">
-                    Verified Simulation Mode
-                  </Badge>
-                ) : providerStatus?.configured ? (
-                  <Badge variant="success" size="sm">
-                    Connected (api.prod.adaptionlabs.ai)
-                  </Badge>
-                ) : (
-                  <Badge variant="neutral" size="sm">
-                    ADAPTION_API_KEY Not Configured
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-indigo-200 max-w-2xl leading-relaxed">
-                {providerStatus?.message || 'Checking Adaption Labs connection...'}
-              </p>
-            </div>
+      {/* Connection status: one line, details on demand */}
+      <details className="group rounded-2xl bg-indigo-950/45 px-5 py-4 backdrop-blur-sm">
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 text-base text-white [&::-webkit-details-marker]:hidden">
+          <span className="flex flex-wrap items-center gap-3">
+            <BrainCircuit className="h-5 w-5 text-indigo-300" />
+            <span className="font-semibold">Adaption API</span>
+            {providerStatus?.isMockMode ? (
+              <Badge variant="warning" size="sm">Simulation mode</Badge>
+            ) : providerStatus?.configured ? (
+              <Badge variant="success" size="sm">Connected</Badge>
+            ) : (
+              <Badge variant="neutral" size="sm">API key not configured</Badge>
+            )}
+          </span>
+          <span className="text-sm text-indigo-200 group-open:hidden">Details</span>
+          <span className="hidden text-sm text-indigo-200 group-open:inline">Hide</span>
+        </summary>
+        <div className="mt-4 space-y-3 text-base text-indigo-100">
+          <p>{providerStatus?.message || 'Checking Adaption Labs connection...'}</p>
+          <p className="text-sm text-indigo-200">
+            Endpoint: {providerStatus?.baseUrl || 'https://api.prod.adaptionlabs.ai/api/v1'}
+          </p>
+          <p className="text-sm text-indigo-200">
+            Evaluates dataset quality (alignment, clarity, diversity) on prompt-completion pairs. It does not
+            fine-tune model weights.
+          </p>
+        </div>
+      </details>
 
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="bg-white/10 rounded-lg px-3 py-1.5 border border-white/10 text-right">
-                <div className="text-[10px] text-indigo-300 font-mono uppercase tracking-wider">Target Endpoint</div>
-                <div className="text-xs font-mono text-white truncate max-w-[200px]">
-                  {providerStatus?.baseUrl || 'https://api.prod.adaptionlabs.ai/api/v1'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-3 text-[11px] text-indigo-300">
-            <span className="flex items-center gap-1 font-medium text-amber-300">
-              <HelpCircle className="h-3.5 w-3.5" />
-              Dataset Quality & Representation Evaluation
+      {/* Workflow: four steps */}
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { icon: Database, label: 'Prepare Data' },
+          { icon: Code2, label: 'Run Adaption' },
+          { icon: Award, label: 'Evaluate' },
+          { icon: Sparkles, label: 'Use Verified Examples' },
+        ].map(({ icon: Icon, label }, i) => (
+          <li key={label} className="flex items-center gap-3 rounded-2xl bg-indigo-950/45 px-4 py-3.5 backdrop-blur-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/25 text-indigo-100">
+              <Icon className="h-5 w-5" />
             </span>
-            <span>•</span>
-            <span>Measures task alignment, clarity, and diversity on SFT prompt-completion pairs.</span>
-            <span>•</span>
-            <span className="text-slate-400">Strictly distinguishes dataset evaluation from model weight parameter fine-tuning.</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 4-Stage Adaption Workflow Architecture */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="border-slate-200 bg-white hover:border-slate-300 transition-colors">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-                <Database className="h-4 w-4" />
-              </div>
-              <span className="font-mono text-xs text-slate-400">Stage 01</span>
-            </div>
-            <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Source Extraction</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Curates verified customer reviews from genuine CSV imports or demo fixtures. Preserves original raw records.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 bg-white hover:border-slate-300 transition-colors">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
-                <Code2 className="h-4 w-4" />
-              </div>
-              <span className="font-mono text-xs text-slate-400">Stage 02</span>
-            </div>
-            <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Instruction Formatting</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Synthesizes prompt-completion instruction pairs with validated schemas and official <code>column_mapping</code>.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 bg-white hover:border-slate-300 transition-colors">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                <Award className="h-4 w-4" />
-              </div>
-              <span className="font-mono text-xs text-slate-400">Stage 03</span>
-            </div>
-            <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Adaption Evaluation</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Queries Adaption evaluation endpoint for Grade Before/After, Quality Scores, and relative improvement percentages.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 bg-white hover:border-slate-300 transition-colors">
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <span className="font-mono text-xs text-slate-400">Stage 04</span>
-            </div>
-            <h4 className="text-xs sm:text-sm font-semibold text-slate-900">Exemplar Integration</h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Ingests verified high-scoring pairs into InsightFlow prompt few-shot library for zero-hallucination classification.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <span className="text-base font-semibold text-white">
+              <span className="text-indigo-300">{i + 1}.</span> {label}
+            </span>
+          </li>
+        ))}
+      </ol>
 
       {/* Main Content Layout: Run History & Run Detail Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -301,7 +228,7 @@ export const AdaptionPage: React.FC = () => {
             <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Adaption Runs</CardTitle>
-                <CardDescription>Persisted evaluation executions</CardDescription>
+                
               </div>
               <Badge variant="neutral" size="sm">
                 {runs.length} Runs
@@ -313,7 +240,7 @@ export const AdaptionPage: React.FC = () => {
                 <div className="text-center py-8 px-4 text-slate-500 text-xs">
                   <BrainCircuit className="h-8 w-8 mx-auto text-slate-300 mb-2" />
                   <p className="font-medium">No Adaption runs recorded yet.</p>
-                  <p className="mt-1 text-slate-400">Click "Run Adaption Workflow" to prepare and evaluate customer feedback data.</p>
+                  
                 </div>
               ) : (
                 runs.map((r) => {

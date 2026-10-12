@@ -215,53 +215,15 @@ export const OverviewPage: React.FC = () => {
 
   return (
     <div ref={pageContainerRef}>
-      {/* Hero: full-bleed indigo shader atmosphere */}
-      <section className="overview-hero-surface relative isolate overflow-hidden text-white">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
-          <div className="max-w-2xl space-y-5">
-            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-5xl">
-              Hear every customer.{' '}
-              <span className="bg-gradient-to-r from-indigo-200 to-violet-300 bg-clip-text text-transparent">
-                Fix what matters first.
-              </span>
-            </h1>
-            <p className="max-w-xl text-sm leading-relaxed text-indigo-100/90 sm:text-base">
-              Turn raw reviews into a ranked, evidence-backed action queue: sentiment, clustered issues, and
-              deterministic priority scores in one place.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <Link
-                to="/feedback"
-                className="inline-flex items-center gap-2 rounded-xl bg-white! px-5 py-2.5 text-sm font-semibold text-indigo-900! shadow-lg shadow-indigo-950/30 transition-colors hover:bg-indigo-50! focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
-              >
-                <Database className="h-4 w-4" />
-                Explore feedback
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/actions"
-                className="inline-flex items-center gap-2 rounded-xl border border-indigo-300/40 bg-indigo-950/40 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-indigo-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
-              >
-                <Layers className="h-4 w-4 text-indigo-300" />
-                View action queue
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-6">
       {/* Page Header with Scope Controls */}
       <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Intelligence Overview
+          <h2 className="font-bold tracking-tight text-slate-900">
+            Overview
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Real customer feedback volume, AI sentiment classification, and triage priority queue.
-          </p>
-        </div>
+                  </div>
         
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Quick Filters */}
@@ -269,7 +231,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-xs h-9 py-1.5"
+              className="h-10 py-1.5"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -281,7 +243,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedDatasetType}
               onChange={(e) => setSelectedDatasetType(e.target.value)}
-              className="text-xs h-9 py-1.5"
+              className="h-10 py-1.5"
             >
               <option value="all">All Provenance</option>
               <option value="genuine_import">Genuine CSV Only</option>
@@ -326,7 +288,7 @@ export const OverviewPage: React.FC = () => {
 
       {/* Empty state: nothing ingested yet */}
       {metrics?.summary.isEmpty && !isLoading && (
-        <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-indigo-300 bg-indigo-50/60 p-6 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-2xl bg-indigo-500/10 p-6 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
               <Database className="h-5 w-5" />
@@ -489,7 +451,7 @@ export const OverviewPage: React.FC = () => {
                   Sentiment Distribution
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Proportion of analyzed feedback. Click slice to filter feed.
+                  Select a slice to filter the feed.
                 </CardDescription>
               </div>
               <Badge variant="neutral" size="sm">
@@ -562,7 +524,7 @@ export const OverviewPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl ">
                 <AlertCircle className="h-8 w-8 text-slate-300 mb-2" />
                 <p className="text-sm font-semibold text-slate-700">No Sentiment Analysis Computed</p>
                 <p className="text-xs text-slate-500 max-w-xs mt-1">
@@ -611,7 +573,7 @@ export const OverviewPage: React.FC = () => {
                   Feedback Category Breakdown
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Volume distribution across supplied business categories. Click bar to explore.
+                  Select a bar to explore.
                 </CardDescription>
               </div>
               <Badge variant="indigo" size="sm">
@@ -686,7 +648,7 @@ export const OverviewPage: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <div className="h-64 flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 rounded-xl ">
                 <FileSpreadsheet className="h-8 w-8 text-slate-300 mb-2" />
                 <p className="text-sm font-semibold text-slate-700">No Categories Detected</p>
                 <p className="text-xs text-slate-500 max-w-xs mt-1">
@@ -736,7 +698,7 @@ export const OverviewPage: React.FC = () => {
                   Top Issue Topics
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Most cited friction points extracted by AI, ranked by frequency.
+                  Most cited by customers.
                 </CardDescription>
               </div>
               <Badge variant="neutral" size="sm">
@@ -818,7 +780,7 @@ export const OverviewPage: React.FC = () => {
                   Priority Triage Queue
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Deterministic ranking: 100 × (0.40F + 0.35S + 0.25N).
+                  Highest priority first.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-3">

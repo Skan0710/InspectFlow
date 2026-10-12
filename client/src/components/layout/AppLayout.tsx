@@ -6,9 +6,11 @@ import { ProductFooter } from './ProductFooter';
 import { ChatCopilot } from '../chat/ChatCopilot';
 import { CursorSpotlight } from './CursorSpotlight';
 import { HeroBackground } from '../canvas/HeroBackground';
+import { useAuth } from '../../lib/auth';
 
 export const AppLayout: React.FC = () => {
   const { pathname } = useLocation();
+  const { status } = useAuth();
   // The overview lays out its own full-bleed hero
   const fullBleed = pathname === '/';
   const reduce = useReducedMotion();
@@ -32,7 +34,7 @@ export const AppLayout: React.FC = () => {
         </motion.div>
       </main>
       <ProductFooter />
-      <ChatCopilot />
+      {status === 'authenticated' && <ChatCopilot />}
     </div>
   );
 };

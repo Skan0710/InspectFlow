@@ -25,7 +25,7 @@ def with_hover(token, decl):
     rules.append(f'{S} .group:hover [class~="{g}"] {{ {decl} }}')
 
 
-GLASS = 'background-color: rgba(20, 18, 62, 0.9)'
+GLASS = 'background-color: rgba(30, 27, 85, 0.5)'
 BG = {
     'bg-white': GLASS,
     'bg-slate-50': 'background-color: rgba(255,255,255,0.05)',
@@ -81,9 +81,9 @@ for t, c in TEXT.items():
     with_hover(t, f'color: {c}')
 
 BORDER = {
-    'border-slate-100': 0.12, 'border-slate-200': 0.18, 'border-slate-300': 0.26,
-    'border-gray-200': 0.18, 'border-indigo-100': 0.28, 'border-indigo-200': 0.34,
-    'border-indigo-300': 0.45,
+    'border-slate-100': 0.06, 'border-slate-200': 0.10, 'border-slate-300': 0.16,
+    'border-gray-200': 0.10, 'border-indigo-100': 0.14, 'border-indigo-200': 0.20,
+    'border-indigo-300': 0.30,
 }
 for t, a in BORDER.items():
     with_hover(t, f'border-color: rgba(165,180,252,{a})')
@@ -93,9 +93,9 @@ for color, rgb in {
     'sky': '14,165,233', 'blue': '59,130,246',
 }.items():
     for shade in ('100', '200', '300'):
-        with_hover(f'border-{color}-{shade}', f'border-color: rgba({rgb},0.4)')
+        with_hover(f'border-{color}-{shade}', f'border-color: rgba({rgb},0.22)')
 
-for t, a in {'divide-slate-100': 0.12, 'divide-slate-200': 0.18}.items():
+for t, a in {'divide-slate-100': 0.07, 'divide-slate-200': 0.10}.items():
     rules.append(f'{S} [class~="{t}"] > :not(:last-child) {{ border-color: rgba(165,180,252,{a}) }}')
 
 for t in ('from-white', 'via-white', 'to-white', 'from-slate-50', 'to-slate-50', 'via-slate-50'):

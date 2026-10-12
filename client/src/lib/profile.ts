@@ -87,35 +87,20 @@ export function resetProfile(): void {
   emit();
 }
 
-export function loginWithGoogle(payload: {
-  id?: string;
+export function applySessionProfile(session: {
+  id: string;
   email: string;
   name: string;
   picture?: string;
+  provider: 'google' | 'email';
 }): void {
   current = {
     ...current,
-    name: payload.name.trim() || current.name || DEFAULT_PROFILE.name,
-    email: payload.email.trim() || current.email,
-    avatarUrl: payload.picture,
-    isGoogleAuth: true,
-    googleId: payload.id,
-    role: current.role === DEFAULT_PROFILE.role ? 'Verified Google Member' : current.role,
-  };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-  } catch {
-    // ignore
-  }
-  emit();
-}
-
-export function logoutGoogle(): void {
-  current = {
-    ...current,
-    isGoogleAuth: false,
-    googleId: undefined,
-    avatarUrl: undefined,
+    name: session.name.trim() || current.name,
+    email: session.email || current.email,
+    avatarUrl: session.picture,
+    isGoogleAuth: session.provider === 'google',
+    googleId: session.provider === 'google' ? session.id : undefined,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(current));

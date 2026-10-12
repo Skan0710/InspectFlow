@@ -3,8 +3,9 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X, Settings, Sparkles, User, ChevronDown, LogOut } from 'lucide-react';
 import { navigationItems } from './navigation';
 import { SpotlightNavbar } from '../ui/spotlight-navbar';
-import { ACCENTS, getInitials, useProfile, logoutGoogle } from '../../lib/profile';
-import { GoogleSignInButton } from '../auth/GoogleSignInButton';
+import { ACCENTS, getInitials, useProfile } from '../../lib/profile';
+import { useAuth } from '../../lib/auth';
+import { Button } from '../ui/Button';
 
 const mobileLink =
   'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300';
@@ -15,6 +16,8 @@ const isActivePath = (pathname: string, path: string) =>
 export const TopNavbar: React.FC = () => {
   const { pathname } = useLocation();
   const profile = useProfile();
+  const { status, openSignIn, signOut } = useAuth();
+  const signedIn = status === 'authenticated';
   // Menus remember the route they were opened on, so navigating closes them without an effect
   const [menuAt, setMenuAt] = useState<string | null>(null);
   const [profileAt, setProfileAt] = useState<string | null>(null);
@@ -68,12 +71,13 @@ export const TopNavbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {!profile.isGoogleAuth && (
-            <div className="hidden sm:block">
-              <GoogleSignInButton variant="compact" />
-            </div>
+          {!signedIn && status === 'guest' && (
+            <Button size="md" onClick={() => openSignIn()}>
+              Sign in
+            </Button>
           )}
 
+          {signedIn && (
           <div className="relative" ref={profileRef}>
             <button
               type="button"
@@ -134,34 +138,25 @@ export const TopNavbar: React.FC = () => {
                     Settings
                   </Link>
 
-                  <div className="pt-1 mt-1 border-t border-white/10">
-                    {profile.isGoogleAuth ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          logoutGoogle();
-                          setProfileOpen(false);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sign out of Google
-                      </button>
-                    ) : (
-                      <div className="px-2 py-1">
-                        <GoogleSignInButton
-                          variant="compact"
-                          className="w-full justify-center"
-                          onSuccess={() => setProfileOpen(false)}
-                        />
-                      </div>
-                    )}
+                  <div className="mt-1 border-t border-white/10 pt-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        void signOut();
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign out
+                    </button>
                   </div>
                 </div>
               </div>
             )}
           </div>
+          )}
 
           <button
             type="button"

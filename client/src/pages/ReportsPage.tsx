@@ -18,12 +18,11 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { EmptyState } from '../components/ui/EmptyState';
-import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
 import {
   fetchReports,
@@ -147,19 +146,13 @@ export const ReportsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <span>Executive</span>
-              <FlipText className="text-indigo-300">
-                Reports & Digests
-              </FlipText>
+              <span>Reports</span>
             </h2>
             <Badge variant="indigo" size="sm" className="font-mono">
               <StatsCounter value={reports.length} /> Reports
             </Badge>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Generate executive briefings, downloadable PDF audits, and structured CSV intelligence digests calculated from actual feedback records.
-          </p>
-        </div>
+                  </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
@@ -265,16 +258,8 @@ export const ReportsPage: React.FC = () => {
                     <CardTitle className="text-base sm:text-lg text-slate-900 pt-1">
                       {report.title}
                     </CardTitle>
-                    <CardDescription className="line-clamp-2 text-slate-600 text-xs">
-                      {report.description || p.executiveSummary}
-                    </CardDescription>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge variant="success" size="sm" dot>
-                      Generated
-                    </Badge>
-                  </div>
                 </CardHeader>
 
                 <CardContent className="pt-1 pb-3 text-xs">

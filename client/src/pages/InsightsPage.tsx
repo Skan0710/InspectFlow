@@ -410,15 +410,12 @@ export const InsightsPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>Customer</span>
+            <span>AI</span>
             <FlipText className="text-indigo-300">
-              AI Insights Radar
+              Insights
             </FlipText>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Deterministic issue-priority scoring calculated from actual frequency, severity, and negative sentiment.
-          </p>
-        </div>
+                  </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button 
             variant="outline" 

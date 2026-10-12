@@ -192,15 +192,12 @@ export const ActionCenterPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>Customer</span>
+            <span>Action</span>
             <FlipText className="text-indigo-300">
-              Action Center
+              Center
             </FlipText>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Prioritized queue of customer friction topics with persistent status management, internal notes, and owners.
-          </p>
-        </div>
+                  </div>
         <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
@@ -306,7 +303,7 @@ export const ActionCenterPage: React.FC = () => {
           <p className="text-sm font-medium text-slate-600 mt-3">Loading prioritized issues queue...</p>
         </div>
       ) : issues.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center bg-slate-50/50">
+        <div className="rounded-xl p-12 text-center bg-slate-50/50">
           <Layers className="h-10 w-10 text-indigo-500 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-900">No Issues Match Current Filters</h3>
           <p className="text-xs text-slate-600 max-w-md mx-auto mt-1">

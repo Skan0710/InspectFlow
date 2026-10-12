@@ -286,12 +286,9 @@ export const FeedbackPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Customer Feedback Explorer
+            Feedback
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Search, filter, and inspect verbatim customer reviews with AI sentiment, primary topics, severity, and grounding citations.
-          </p>
-        </div>
+                  </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
