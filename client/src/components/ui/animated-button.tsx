@@ -9,7 +9,7 @@ export type AnimatedButtonProps = Omit<HTMLMotionProps<"button">, "children"> & 
 };
 
 const MASK =
-  "linear-gradient(-75deg, white calc(var(--mask-x) + 20%), transparent calc(var(--mask-x) + 30%), white calc(var(--mask-x) + 100%))";
+  "linear-gradient(-75deg, white calc(var(--mask-x) + 20%), rgba(255,255,255,0.55) calc(var(--mask-x) + 30%), white calc(var(--mask-x) + 100%))";
 
 /**
  * AnimatedButton, adapted from VengeanceUI (animated-button).

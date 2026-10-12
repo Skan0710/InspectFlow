@@ -19,17 +19,18 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-8 sm:p-12 text-center ${className}`}
+      className={`flex flex-col items-center justify-center relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-900/50 via-indigo-950/70 to-violet-950/60 p-8 sm:p-12 text-center ${className}`}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-600 mb-4 ring-8 ring-slate-50">
+      <div className="pointer-events-none absolute -top-16 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-indigo-500/25 blur-3xl" />
+      <div className="relative mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-violet-500 text-white shadow-lg shadow-indigo-950/50">
         {icon}
       </div>
-      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1.5 max-w-sm text-xs sm:text-sm text-slate-500 leading-relaxed">
+      <h3 className="relative text-lg font-semibold text-white">{title}</h3>
+      <p className="relative mt-1.5 max-w-sm text-sm text-indigo-100 leading-relaxed">
         {description}
       </p>
       {(action || secondaryAction) && (
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3">
           {action}
           {secondaryAction}
         </div>

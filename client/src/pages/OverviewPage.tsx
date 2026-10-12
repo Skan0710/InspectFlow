@@ -31,10 +31,7 @@ import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset } from '..
 import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
-import { WorkflowFeatureBento } from '../components/landing/WorkflowFeatureBento';
 import { StatsCounter } from '../components/ui/stats-counter';
-import { ShareSheet } from '../components/ui/share-sheet';
-import { LineHoverLink } from '../components/ui/line-hover-link';
 
 const SENTIMENT_COLORS = {
   positive: '#10b981', // Emerald
@@ -220,9 +217,9 @@ export const OverviewPage: React.FC = () => {
     <div ref={pageContainerRef}>
       {/* Hero: full-bleed indigo shader atmosphere */}
       <section className="overview-hero-surface relative isolate overflow-hidden text-white">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
           <div className="max-w-2xl space-y-5">
-            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-5xl">
               Hear every customer.{' '}
               <span className="bg-gradient-to-r from-indigo-200 to-violet-300 bg-clip-text text-transparent">
                 Fix what matters first.
@@ -248,11 +245,6 @@ export const OverviewPage: React.FC = () => {
                 <Layers className="h-4 w-4 text-indigo-300" />
                 View action queue
               </Link>
-              <ShareSheet
-                url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local'}
-                title="InsightFlow Intelligence Dashboard"
-                variant="compact"
-              />
             </div>
           </div>
         </div>
@@ -261,9 +253,9 @@ export const OverviewPage: React.FC = () => {
       <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
       <div className="space-y-6">
       {/* Page Header with Scope Controls */}
-      <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
+      <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
             Intelligence Overview
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -277,7 +269,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-xs h-8.5 py-1"
+              className="text-xs h-9 py-1.5"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -289,7 +281,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedDatasetType}
               onChange={(e) => setSelectedDatasetType(e.target.value)}
-              className="text-xs h-8.5 py-1"
+              className="text-xs h-9 py-1.5"
             >
               <option value="all">All Provenance</option>
               <option value="genuine_import">Genuine CSV Only</option>
@@ -362,13 +354,13 @@ export const OverviewPage: React.FC = () => {
       {/* 1. KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Total Feedback Records */}
-        <Card className="overview-kpi-card">
+        <Card className="kpi-tile">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Total Feedback</span>
-              <Database className="h-4 w-4 text-indigo-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-400/30"><Database className="h-5 w-5" /></span>
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
               {metrics ? <StatsCounter value={metrics.summary.totalFeedback} /> : '0'}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
@@ -392,13 +384,13 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 2: Analyzed Feedback */}
-        <Card className="overview-kpi-card">
+        <Card className="kpi-tile">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>AI Analyzed Volume</span>
-              <Sparkles className="h-4 w-4 text-emerald-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"><Sparkles className="h-5 w-5" /></span>
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
               {metrics ? <StatsCounter value={metrics.summary.analyzedFeedback} /> : '0'}
             </div>
             <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
@@ -417,13 +409,13 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 3: Negative Feedback */}
-        <Card className="overview-kpi-card">
+        <Card className="kpi-tile">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Negative Friction</span>
-              <AlertTriangle className="h-4 w-4 text-rose-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"><AlertTriangle className="h-5 w-5" /></span>
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
               {metrics && metrics.sentiment.denominator > 0 ? (
                 <span className="inline-flex items-center">
                   <StatsCounter value={metrics.sentiment.counts.negative} />
@@ -446,13 +438,13 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 4: Open Priority Issues */}
-        <Card className="overview-kpi-card">
+        <Card className="kpi-tile">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Triage Queue</span>
-              <Layers className="h-4 w-4 text-indigo-500" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30"><Layers className="h-5 w-5" /></span>
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
               <Link to="/actions" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5">
                 {metrics ? (
                   <>
@@ -482,66 +474,6 @@ export const OverviewPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Compact ingestion + analysis coverage status */}
-      {metrics && !metrics.summary.isEmpty && (
-        <div className="flex flex-col gap-4 rounded-xl border border-indigo-100 bg-white p-4 shadow-xs lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-              <Database className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">
-                {metrics.summary.totalFeedback.toLocaleString()} records ingested
-              </p>
-              <p className="truncate text-xs text-slate-500">
-                {datasetStatus
-                  ? `${datasetStatus.genuineCount.toLocaleString()} genuine · ${datasetStatus.sampleCount.toLocaleString()} demo`
-                  : 'Dataset provenance loading'}
-                {datasetStatus?.lastImportAt
-                  ? ` · last import ${new Date(datasetStatus.lastImportAt).toLocaleString()}`
-                  : ''}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-1 items-center gap-4 lg:max-w-md">
-            <div className="flex-1">
-              <div className="mb-1 flex items-center justify-between text-xs">
-                <span className="font-medium text-slate-600">Analysis coverage</span>
-                <span className="font-semibold text-slate-900">
-                  {metrics.summary.analyzedFeedback.toLocaleString()} / {metrics.summary.totalFeedback.toLocaleString()}
-                </span>
-              </div>
-              <div
-                className="h-2 overflow-hidden rounded-full bg-indigo-100"
-                role="progressbar"
-                aria-label="Analysis coverage"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={metrics.summary.analysisCoveragePercent}
-              >
-                <div
-                  className="h-full rounded-full bg-indigo-600 transition-all duration-500"
-                  style={{ width: `${Math.min(100, metrics.summary.analysisCoveragePercent)}%` }}
-                />
-              </div>
-            </div>
-            {!metrics.summary.hasAnalysisRun ? (
-              <Badge variant="warning" size="sm" dot>
-                Awaiting first run
-              </Badge>
-            ) : metrics.summary.pendingAnalysis > 0 ? (
-              <Badge variant="indigo" size="sm" dot>
-                {metrics.summary.pendingAnalysis.toLocaleString()} pending
-              </Badge>
-            ) : (
-              <Badge variant="success" size="sm" dot>
-                Fully analyzed
-              </Badge>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Batch Pipeline Control Card */}
       <AnalysisProgressCard onAnalysisComplete={loadData} />
@@ -890,20 +822,6 @@ export const OverviewPage: React.FC = () => {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-3">
-                <LineHoverLink
-                  variant="slide"
-                  href="/actions"
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-                >
-                  Action Center →
-                </LineHoverLink>
-                <LineHoverLink
-                  variant="slide"
-                  href="/insights"
-                  className="text-xs font-medium text-slate-600 hover:text-slate-900"
-                >
-                  AI Insights →
-                </LineHoverLink>
               </div>
             </div>
           </CardHeader>
@@ -995,57 +913,6 @@ export const OverviewPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Duplicate-Text Telemetry Card */}
-      {metrics && metrics.duplicateStats.duplicateFeedbackCount > 0 && (
-        <Card className="border-amber-200/80 bg-amber-50/30">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <CardTitle className="text-sm font-bold text-slate-900">
-                  Duplicate Complaint Telemetry
-                </CardTitle>
-              </div>
-              <Badge variant="warning" size="sm">
-                {metrics.duplicateStats.duplicateRatio}% Repeated Text Ratio
-              </Badge>
-            </div>
-            <CardDescription className="text-xs text-slate-600">
-              {metrics.duplicateStats.duplicateFeedbackCount.toLocaleString()} identical verbatim reviews detected across {metrics.duplicateStats.uniqueReviewTexts.toLocaleString()} unique complaint texts.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-2">
-            <div className="grid gap-2 sm:grid-cols-2">
-              {metrics.duplicateStats.topRepeatedReviews.slice(0, 4).map((dup, i) => (
-                <div
-                  key={i}
-                  className="rounded-lg bg-white p-3 border border-amber-200/60 shadow-xs flex items-start justify-between gap-3 text-xs"
-                >
-                  <div className="min-w-0">
-                    <p className="text-slate-800 font-normal italic truncate">
-                      "{dup.textSnippet}"
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                      <Badge variant="neutral" size="sm">
-                        {dup.category}
-                      </Badge>
-                      <span>•</span>
-                      <span><strong>{dup.count}</strong> total instances</span>
-                    </div>
-                  </div>
-                  <Badge variant="warning" size="sm">
-                    {dup.duplicateCount} dupes
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 21st.dev & Mintlify Inspired Architectural Workflow Bento */}
-      <WorkflowFeatureBento />
 
       {/* End-to-End Product Storytelling Journey Section */}
       <ProductStorySection />

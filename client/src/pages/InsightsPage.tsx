@@ -25,8 +25,6 @@ import { Link } from 'react-router-dom';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
 import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
-import { ShareSheet } from '../components/ui/share-sheet';
-import { LineHoverLink } from '../components/ui/line-hover-link';
 import type { IssueRecommendation } from '../types/recommendations';
 
 interface RepresentativeExample {
@@ -409,9 +407,9 @@ export const InsightsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <span>Customer</span>
             <FlipText className="text-indigo-300">
               AI Insights Radar
@@ -422,11 +420,6 @@ export const InsightsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <ShareSheet
-            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/insights'}
-            title="InsightFlow AI Insights & Issue Clusters"
-            variant="compact"
-          />
           <Button 
             variant="outline" 
             size="sm" 
@@ -454,13 +447,6 @@ export const InsightsPage: React.FC = () => {
           >
             {isBatchGenerating ? 'Generating Recs...' : 'Generate High-Priority Recommendations'}
           </Button>
-          <LineHoverLink
-            variant="slide"
-            href="/actions"
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-          >
-            Review Action Queue →
-          </LineHoverLink>
         </div>
       </div>
 

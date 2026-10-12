@@ -25,8 +25,6 @@ import { Textarea } from '../components/ui/Textarea';
 import { EmptyState } from '../components/ui/EmptyState';
 import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
-import { ShareSheet } from '../components/ui/share-sheet';
-import { LineHoverLink } from '../components/ui/line-hover-link';
 import {
   fetchReports,
   fetchReportById,
@@ -145,10 +143,10 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-slate-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <span>Executive</span>
               <FlipText className="text-indigo-300">
                 Reports & Digests
@@ -163,18 +161,6 @@ export const ReportsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <LineHoverLink
-            variant="slide"
-            href="/actions"
-            className="text-xs font-medium text-slate-600 hover:text-indigo-600 mr-1"
-          >
-            Action Center →
-          </LineHoverLink>
-          <ShareSheet
-            url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local/reports'}
-            title="InsightFlow Executive Intelligence Reports"
-            variant="compact"
-          />
           <Button
             variant="outline"
             size="sm"
