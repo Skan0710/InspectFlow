@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { gsap, useGsapContext, prefersReducedMotion } from '../../lib/animations/gsap';
+import { LineHoverLink } from '../ui/line-hover-link';
 
 export const ProductStorySection: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -189,10 +190,14 @@ export const ProductStorySection: React.FC = () => {
             Metrics, priority calculations, and citations reflect actual customer database records with zero fabricated data.
           </span>
         </div>
-        <div className="flex items-center gap-1 font-mono text-[11px] text-indigo-600 shrink-0 font-medium">
+        <LineHoverLink
+          variant="slide"
+          href="#architecture"
+          className="flex items-center gap-1 font-mono text-[11px] text-indigo-600 shrink-0 font-medium hover:text-indigo-800"
+        >
           InsightFlow Architecture v2026.1
           <ArrowRight className="h-3.5 w-3.5" />
-        </div>
+        </LineHoverLink>
       </div>
     </section>
   );

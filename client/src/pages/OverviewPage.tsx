@@ -34,6 +34,10 @@ import { ProductStorySection } from '../components/landing/ProductStorySection';
 import { WorkflowFeatureBento } from '../components/landing/WorkflowFeatureBento';
 import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
 import { BorderBeam } from '../components/ui/BorderBeam';
+import { StatsCounter } from '../components/ui/stats-counter';
+import { FlipText } from '../components/ui/flip-text';
+import { ShareSheet } from '../components/ui/share-sheet';
+import { LineHoverLink } from '../components/ui/line-hover-link';
 
 const SENTIMENT_COLORS = {
   positive: '#10b981', // Emerald
@@ -220,8 +224,11 @@ export const OverviewPage: React.FC = () => {
               <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
               Build Battle 2026 AI Intelligence Engine
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-              Customer Feedback Analytics & Priority Radar
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex flex-wrap items-center gap-2">
+              <span>Customer Voice Analytics &</span>
+              <FlipText className="bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">
+                Priority Radar
+              </FlipText>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Real customer voice ingestion, multi-factor deterministic triage ranking, and evidence-grounded action intelligence.
@@ -243,6 +250,11 @@ export const OverviewPage: React.FC = () => {
               <Layers className="h-3.5 w-3.5 text-indigo-400" />
               Action Center
             </Link>
+            <ShareSheet
+              url={typeof window !== 'undefined' ? window.location.href : 'https://insightflow.local'}
+              title="InsightFlow Intelligence Dashboard"
+              variant="compact"
+            />
           </div>
         </div>
       </div>
@@ -412,7 +424,7 @@ export const OverviewPage: React.FC = () => {
               <Database className="h-4 w-4 text-indigo-600" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              {metrics ? metrics.summary.totalFeedback.toLocaleString() : '0'}
+              {metrics ? <StatsCounter value={metrics.summary.totalFeedback} /> : '0'}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
               {datasetStatus?.activeDatasetType === 'genuine' ? (
@@ -442,7 +454,7 @@ export const OverviewPage: React.FC = () => {
               <Sparkles className="h-4 w-4 text-emerald-600" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              {metrics ? metrics.summary.analyzedFeedback.toLocaleString() : '0'}
+              {metrics ? <StatsCounter value={metrics.summary.analyzedFeedback} /> : '0'}
             </div>
             <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
               {metrics && metrics.summary.totalFeedback > 0 ? (
@@ -468,10 +480,10 @@ export const OverviewPage: React.FC = () => {
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
               {metrics && metrics.sentiment.denominator > 0 ? (
-                <span>
-                  {metrics.sentiment.counts.negative.toLocaleString()}
-                  <span className="text-sm font-semibold text-rose-600 ml-1.5">
-                    ({metrics.sentiment.percentages.negative}%)
+                <span className="inline-flex items-center">
+                  <StatsCounter value={metrics.sentiment.counts.negative} />
+                  <span className="text-sm font-semibold text-rose-600 ml-1.5 inline-flex items-center">
+                    (<StatsCounter value={metrics.sentiment.percentages.negative} suffix="%" decimals={1} />)
                   </span>
                 </span>
               ) : (
@@ -496,8 +508,15 @@ export const OverviewPage: React.FC = () => {
               <Layers className="h-4 w-4 text-indigo-500" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              <Link to="/actions" className="hover:text-indigo-600 transition-colors">
-                {metrics ? `${metrics.priorityRankings.openIssuesCount !== undefined ? metrics.priorityRankings.openIssuesCount : metrics.priorityRankings.issues.length} Issues` : '0 Issues'}
+              <Link to="/actions" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5">
+                {metrics ? (
+                  <>
+                    <StatsCounter value={metrics.priorityRankings.openIssuesCount !== undefined ? metrics.priorityRankings.openIssuesCount : metrics.priorityRankings.issues.length} />
+                    <span>Issues</span>
+                  </>
+                ) : (
+                  '0 Issues'
+                )}
               </Link>
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
@@ -862,17 +881,21 @@ export const OverviewPage: React.FC = () => {
                   Deterministic ranking: 100 × (0.40F + 0.35S + 0.25N).
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Link to="/actions">
-                  <Button variant="primary" size="sm" className="text-xs h-7">
-                    Action Center
-                  </Button>
-                </Link>
-                <Link to="/insights">
-                  <Button variant="outline" size="sm" className="text-xs h-7">
-                    AI Insights
-                  </Button>
-                </Link>
+              <div className="flex items-center gap-3">
+                <LineHoverLink
+                  variant="slide"
+                  href="/actions"
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                >
+                  Action Center →
+                </LineHoverLink>
+                <LineHoverLink
+                  variant="slide"
+                  href="/insights"
+                  className="text-xs font-medium text-slate-600 hover:text-slate-900"
+                >
+                  AI Insights →
+                </LineHoverLink>
               </div>
             </div>
           </CardHeader>

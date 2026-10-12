@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Menu,
-  Search,
   Bell,
   Command,
   HelpCircle,
@@ -14,6 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { navigationItems } from './Sidebar';
+import { SpotlightNavbar } from '../ui/spotlight-navbar';
 
 interface TopNavbarProps {
   onOpenMobile: () => void;
@@ -34,7 +34,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenMobile }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showDatasetInfo, setShowDatasetInfo] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [datasetStatus, setDatasetStatus] = useState<DatasetStatusInfo | null>(null);
 
   const fetchDatasetStatus = async () => {
@@ -61,6 +60,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenMobile }) => {
       : location.pathname.startsWith(item.path)
   ) || { label: 'Console', path: '/' };
 
+  const navigate = useNavigate();
+  const spotlightItems = [
+    { label: 'Overview', href: '/' },
+    { label: 'Feedback', href: '/feedback' },
+    { label: 'Actions', href: '/actions' },
+    { label: 'Reports', href: '/reports' },
+    { label: 'Adaption', href: '/adaption' },
+  ];
+  const activeSpotlightIndex = spotlightItems.findIndex((item) =>
+    item.href === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(item.href)
+  );
+
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/90 bg-white px-4 sm:px-6 shadow-xs">
       {/* Left section: Mobile toggle + Page Title & Breadcrumb */}
@@ -85,25 +98,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ onOpenMobile }) => {
         </div>
       </div>
 
-      {/* Center: Global Search Entry Point */}
-      <div className="hidden md:flex flex-1 max-w-md mx-6">
-        <div className="relative w-full">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-            <Search className="h-4 w-4" />
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search feedback, accounts, topics..."
-            className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-1.5 pl-9 pr-14 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/15"
-          />
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
-            <kbd className="inline-flex items-center gap-0.5 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] text-slate-400 shadow-xs">
-              <Command className="h-3 w-3" />K
-            </kbd>
-          </div>
-        </div>
+      {/* Center: Spotlight Navbar */}
+      <div className="hidden lg:flex items-center justify-center flex-1 max-w-xl mx-4">
+        <SpotlightNavbar
+          items={spotlightItems}
+          defaultActiveIndex={activeSpotlightIndex >= 0 ? activeSpotlightIndex : 0}
+          onItemClick={(item) => navigate(item.href)}
+          className="pt-0"
+        />
       </div>
 
       {/* Right section: Visible Dataset Status, Notifications & Profile */}
