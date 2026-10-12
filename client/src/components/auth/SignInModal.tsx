@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, Mail, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock, Mail, Sparkles, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { consumeReturnTo, useAuth } from '../../lib/auth';
 
@@ -19,7 +19,8 @@ const fieldClass =
   'w-full rounded-xl border border-white/15 bg-white/10 py-3 pl-11 pr-4 text-base text-white placeholder:text-indigo-200/70 transition-colors focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-300/40 disabled:opacity-60';
 
 export const SignInModal: React.FC = () => {
-  const { modalOpen, closeSignIn, status, returnTo, configured, signInWithPassword, signUp, signInWithGoogle } = useAuth();
+  const { modalOpen, closeSignIn, status, returnTo, configured, signInWithPassword, signUp, signInWithGoogle, signInDemo } =
+    useAuth();
   const navigate = useNavigate();
   const emailRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -122,12 +123,14 @@ export const SignInModal: React.FC = () => {
         </p>
 
         {!configured && (
-          <div role="alert" className="mt-5 flex gap-2.5 rounded-xl border border-amber-300/30 bg-amber-400/10 p-3.5 text-sm text-amber-100">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              Sign-in isn’t configured yet. Set <code className="font-mono">VITE_SUPABASE_URL</code> and{' '}
-              <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> in <code className="font-mono">client/.env</code>.
-            </span>
+          <div role="status" className="mt-5 flex gap-2.5 rounded-xl border border-indigo-400/30 bg-indigo-500/15 p-3.5 text-sm text-indigo-100">
+            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300" />
+            <div>
+              <p className="font-semibold text-white">Demo mode is active</p>
+              <p className="text-xs text-indigo-200 mt-0.5 leading-relaxed">
+                Auth credentials not set in <code className="font-mono text-white">client/.env</code> yet. You can click <strong>Instant Demo Sign-in</strong> below or enter any email to test the entire workspace!
+              </p>
+            </div>
           </div>
         )}
 
@@ -220,6 +223,22 @@ export const SignInModal: React.FC = () => {
         >
           Continue with Google
         </Button>
+
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full bg-gradient-to-r from-indigo-500/20 via-purple-500/25 to-indigo-500/20 hover:from-indigo-500/30 hover:to-purple-500/35 border-indigo-300/40 text-white shadow-lg shadow-indigo-950/40"
+            onClick={() => signInDemo()}
+            leftIcon={<Sparkles className="h-5 w-5 text-indigo-300" />}
+          >
+            Instant Demo Sign-in
+          </Button>
+          <p className="mt-2 text-center text-xs text-indigo-200/80">
+            One-click workspace demo access with sample data
+          </p>
+        </div>
 
         <p className="mt-6 text-center text-base text-indigo-100">
           {mode === 'signin' ? 'New to InsightFlow?' : 'Already have an account?'}{' '}

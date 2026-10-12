@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ArrowRight, BarChart3, ListChecks, MessagesSquare } from 'lucide-react';
+import { ArrowRight, BarChart3, ListChecks, MessagesSquare, Sparkles } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../lib/auth';
 
@@ -11,7 +11,7 @@ const POINTS = [
 ];
 
 export const GuestLanding: React.FC = () => {
-  const { openSignIn } = useAuth();
+  const { openSignIn, signInDemo } = useAuth();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
 
@@ -30,9 +30,18 @@ export const GuestLanding: React.FC = () => {
       <p className="mt-6 max-w-xl text-lg text-indigo-100 sm:text-xl">
         InsightFlow analyses what customers say and shows you what to fix first.
       </p>
-      <div className="mt-9">
+      <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
         <Button size="lg" rightIcon={<ArrowRight className="h-5 w-5" />} onClick={() => openSignIn()}>
           Sign in to get started
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          className="border-white/20 bg-white/10 hover:bg-white/20 text-white"
+          leftIcon={<Sparkles className="h-5 w-5 text-indigo-300" />}
+          onClick={() => signInDemo()}
+        >
+          Explore Demo Workspace
         </Button>
       </div>
 

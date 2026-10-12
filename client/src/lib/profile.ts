@@ -92,7 +92,7 @@ export function applySessionProfile(session: {
   email: string;
   name: string;
   picture?: string;
-  provider: 'google' | 'email';
+  provider: 'google' | 'email' | 'demo';
 }): void {
   current = {
     ...current,

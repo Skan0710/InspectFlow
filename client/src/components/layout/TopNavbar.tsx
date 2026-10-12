@@ -16,7 +16,7 @@ const isActivePath = (pathname: string, path: string) =>
 export const TopNavbar: React.FC = () => {
   const { pathname } = useLocation();
   const profile = useProfile();
-  const { status, openSignIn, signOut } = useAuth();
+  const { status, openSignIn, signOut, user } = useAuth();
   const signedIn = status === 'authenticated';
   // Menus remember the route they were opened on, so navigating closes them without an effect
   const [menuAt, setMenuAt] = useState<string | null>(null);
@@ -110,11 +110,15 @@ export const TopNavbar: React.FC = () => {
                 <div className="border-b border-white/10 bg-white/5 px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
-                    {profile.isGoogleAuth && (
+                    {profile.isGoogleAuth ? (
                       <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
                         Google
                       </span>
-                    )}
+                    ) : user?.app_metadata?.provider === 'demo' ? (
+                      <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold text-indigo-300 border border-indigo-500/30">
+                        Demo
+                      </span>
+                    ) : null}
                   </div>
                   <p className="truncate text-xs text-indigo-100">{profile.email || profile.role}</p>
                 </div>

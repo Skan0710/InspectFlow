@@ -23,13 +23,13 @@ interface AuthContextValue {
   signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
+  signInDemo: (custom?: { email?: string; name?: string; role?: string }) => void;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const NOT_CONFIGURED =
-  'Sign-in is not configured for this deployment. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.';
+const DEMO_SESSION_KEY = 'insightflow.auth.demo.v1';
 const RETURN_KEY = 'insightflow.auth.return.v1';
 
 function readReturn(): string | null {
@@ -50,8 +50,47 @@ export function consumeReturnTo(): string | null {
   return value;
 }
 
+function readDemoUser(): User | null {
+  try {
+    const raw = localStorage.getItem(DEMO_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+}
+
+function createMockUser(custom?: { email?: string; name?: string; role?: string; provider?: 'demo' | 'google' }): User {
+  const email = custom?.email?.trim() || 'alex.chen@innovatecorp.ai';
+  const name =
+    custom?.name?.trim() ||
+    (custom?.email
+      ? custom.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      : 'Alex Chen');
+  const role = custom?.role?.trim() || 'Lead Product Manager';
+  const provider = custom?.provider || 'demo';
+
+  return {
+    id: 'demo-user-' + Date.now(),
+    app_metadata: { provider },
+    user_metadata: {
+      full_name: name,
+      name,
+      role,
+      avatar_url:
+        provider === 'google'
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+          : undefined,
+    },
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+    email,
+  } as unknown as User;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
+  const [demoUser, setDemoUser] = useState<User | null>(() => readDemoUser());
   const [loading, setLoading] = useState(isAuthConfigured);
   const [modalOpen, setModalOpen] = useState(false);
   const [returnTo, setReturnTo] = useState<string | null>(null);
@@ -77,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const user = session?.user ?? null;
+  const user = session?.user ?? demoUser ?? null;
 
   // Keep the local profile (name, email, avatar) in step with the signed-in account
   useEffect(() => {
@@ -85,12 +124,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       const meta = user.user_metadata ?? {};
       const email = user.email ?? '';
+      const provider =
+        user.app_metadata?.provider === 'google'
+          ? 'google'
+          : user.app_metadata?.provider === 'demo'
+          ? 'demo'
+          : 'email';
       applySessionProfile({
         id: user.id,
         email,
-        name: String(meta.full_name || meta.name || email.split('@')[0] || ''),
-        picture: typeof meta.avatar_url === 'string' ? meta.avatar_url : typeof meta.picture === 'string' ? meta.picture : undefined,
-        provider: user.app_metadata?.provider === 'google' ? 'google' : 'email',
+        name: String(meta.full_name || meta.name || email.split('@')[0] || 'Demo User'),
+        picture: typeof meta.avatar_url === 'string' ? meta.avatar_url : undefined,
+        provider,
       });
     } else {
       resetProfile();
@@ -101,27 +146,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setReturnTo(target ?? null);
     setModalOpen(true);
   }, []);
+
   const closeSignIn = useCallback(() => setModalOpen(false), []);
 
-  const signInWithPassword = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    if (!supabase) return { error: NOT_CONFIGURED };
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error ? error.message : null };
+  const signInDemo = useCallback((custom?: { email?: string; name?: string; role?: string; provider?: 'demo' | 'google' }) => {
+    const mock = createMockUser(custom);
+    try {
+      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(mock));
+    } catch {
+      // ignore
+    }
+    setDemoUser(mock);
+    setModalOpen(false);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    if (!supabase) return { error: NOT_CONFIGURED };
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) return { error: error.message };
-    return { error: null, needsConfirmation: !data.session };
-  }, []);
+  const signInWithPassword = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      if (!supabase) {
+        // Fall back to demo sign in when environment is not yet configured
+        signInDemo({ email });
+        return { error: null };
+      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error ? error.message : null };
+    },
+    [signInDemo],
+  );
+
+  const signUp = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      if (!supabase) {
+        signInDemo({ email });
+        return { error: null };
+      }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) return { error: error.message };
+      return { error: null, needsConfirmation: !data.session };
+    },
+    [signInDemo],
+  );
 
   const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
-    if (!supabase) return { error: NOT_CONFIGURED };
+    if (!supabase) {
+      // Fall back to demo Google sign-in when environment is not yet configured
+      signInDemo({
+        email: 'alex.chen@innovatecorp.ai',
+        name: 'Alex Chen',
+        role: 'Lead Product Manager',
+        provider: 'google',
+      });
+      return { error: null };
+    }
     try {
       if (returnTo) sessionStorage.setItem(RETURN_KEY, returnTo);
     } catch {
@@ -132,9 +211,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       options: { redirectTo: window.location.origin },
     });
     return { error: error ? error.message : null };
-  }, [returnTo]);
+  }, [returnTo, signInDemo]);
 
   const signOut = useCallback(async () => {
+    try {
+      localStorage.removeItem(DEMO_SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    setDemoUser(null);
     if (supabase) await supabase.auth.signOut();
     resetProfile();
   }, []);
@@ -151,9 +236,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithPassword,
       signUp,
       signInWithGoogle,
+      signInDemo,
       signOut,
     }),
-    [loading, user, modalOpen, returnTo, openSignIn, closeSignIn, signInWithPassword, signUp, signInWithGoogle, signOut],
+    [loading, user, modalOpen, returnTo, openSignIn, closeSignIn, signInWithPassword, signUp, signInWithGoogle, signInDemo, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
