@@ -4,6 +4,7 @@ import type {
   AdaptionQualityMetrics,
   AdaptionRunStatus,
   AdaptionTrainingType,
+  AdaptionEstimate,
 } from './types.js';
 
 export interface DatasetCreateResponse {
@@ -17,6 +18,9 @@ export interface DatasetAdaptResponse {
   status: string;
   message?: string;
   estimated_cost?: number;
+  estimated_credits?: number;
+  row_count?: number;
+  multimodalPricingApplied?: boolean;
 }
 
 export interface DatasetStatusResponse {
@@ -37,11 +41,13 @@ export class AdaptionApiClient {
   private apiKey: string;
   private baseUrl: string;
   private isMock: boolean;
+  private timeoutMs: number;
 
   constructor(config?: Partial<AdaptionConfig>) {
-    this.apiKey = (config?.apiKey || process.env.ADAPTION_API_KEY || '').trim();
-    this.baseUrl = (config?.baseUrl || process.env.ADAPTION_BASE_URL || 'https://api.prod.adaptionlabs.ai/api/v1').replace(/\/+$/, '');
-    this.isMock = Boolean(config?.isMock || process.env.ADAPTION_MOCK === 'true');
+    this.apiKey = (config?.apiKey ?? process.env.ADAPTION_API_KEY ?? '').trim();
+    this.baseUrl = (config?.baseUrl ?? process.env.ADAPTION_BASE_URL ?? 'https://api.prod.adaptionlabs.ai/api/v1').replace(/\/+$/, '');
+    this.isMock = Boolean(config?.isMock ?? process.env.ADAPTION_MOCK === 'true');
+    this.timeoutMs = config?.timeoutMs ?? 15000;
   }
 
   public isConfigured(): boolean {
@@ -54,6 +60,107 @@ export class AdaptionApiClient {
 
   public isMockMode(): boolean {
     return this.isMock;
+  }
+
+  /**
+   * Safely returns a masked preview of the configured API key without leaking the secret.
+   */
+  public getMaskedApiKey(): string | undefined {
+    if (!this.apiKey) return undefined;
+    if (this.apiKey.length <= 8) return '********';
+    return `${this.apiKey.slice(0, 6)}...${this.apiKey.slice(-4)}`;
+  }
+
+  /**
+   * Sanitizes error messages to prevent accidental credential or bearer token leakage in logs and API responses.
+   */
+  public sanitizeErrorMessage(rawMessage: string): string {
+    if (!rawMessage) return 'Unknown error';
+    let sanitized = String(rawMessage);
+    if (this.apiKey) {
+      sanitized = sanitized.split(this.apiKey).join('[REDACTED]');
+    }
+    // Redact any bearer tokens
+    sanitized = sanitized.replace(/Bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer [REDACTED]');
+    return sanitized;
+  }
+
+  /**
+   * Performs an authenticated live ping against the Adaption API to verify credentials.
+   */
+  public async testConnection(): Promise<{ ok: boolean; status: number; message: string }> {
+    if (this.isMock) {
+      return {
+        ok: true,
+        status: 200,
+        message: 'Verified simulation mode (ADAPTION_MOCK=true). Local execution enabled.',
+      };
+    }
+
+    if (!this.apiKey) {
+      return {
+        ok: false,
+        status: 400,
+        message: 'ADAPTION_API_KEY is not configured in server environment variables.',
+      };
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(`${this.baseUrl}/datasets`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        signal: controller.signal,
+      });
+
+      if (response.ok) {
+        return {
+          ok: true,
+          status: response.status,
+          message: 'Adaption Labs API authenticated successfully.',
+        };
+      }
+
+      let detail = `HTTP ${response.status} ${response.statusText}`;
+      try {
+        const json = await response.json() as Record<string, unknown>;
+        if (json && typeof json === 'object') {
+          detail = (json.message || json.error || JSON.stringify(json)) as string;
+        }
+      } catch {
+        // Non-JSON response
+      }
+
+      const sanitizedDetail = this.sanitizeErrorMessage(detail);
+
+      if (response.status === 401 || response.status === 403) {
+        return {
+          ok: false,
+          status: response.status,
+          message: `Adaption API credential rejected (${sanitizedDetail}). Please verify your token in your Adaption Labs dashboard.`,
+        };
+      }
+
+      return {
+        ok: false,
+        status: response.status,
+        message: `Adaption API check returned HTTP ${response.status}: ${sanitizedDetail}`,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        ok: false,
+        status: 0,
+        message: `Failed to connect to Adaption Labs (${this.sanitizeErrorMessage(msg)})`,
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
@@ -75,7 +182,7 @@ export class AdaptionApiClient {
     }
 
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    const timeout = options.timeoutMs ?? 15000;
+    const timeout = options.timeoutMs ?? this.timeoutMs;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -95,7 +202,7 @@ export class AdaptionApiClient {
       if (!response.ok) {
         let errorDetails = `HTTP ${response.status} ${response.statusText}`;
         try {
-          const errJson = await response.json() as Record<string, unknown>;
+          const errJson = (await response.json()) as Record<string, unknown>;
           if (errJson && typeof errJson === 'object') {
             errorDetails = (errJson.message || errJson.error || JSON.stringify(errJson)) as string;
           }
@@ -103,23 +210,31 @@ export class AdaptionApiClient {
           // If non-JSON response
         }
 
+        const safeDetails = this.sanitizeErrorMessage(errorDetails);
+
         if (response.status === 401) {
-          throw new Error(`Adaption authentication failed: ${errorDetails}. Please verify ADAPTION_API_KEY.`);
+          throw new Error(`Adaption authentication failed (401 Unauthorized): ${safeDetails}. Please verify ADAPTION_API_KEY.`);
+        }
+        if (response.status === 403) {
+          throw new Error(`Adaption access forbidden (403 Forbidden): ${safeDetails}. The provided API key was rejected by Adaption Labs.`);
         }
         if (response.status === 404) {
-          throw new Error(`Adaption resource not found at ${endpoint}: ${errorDetails}`);
+          throw new Error(`Adaption resource not found at ${endpoint}: ${safeDetails}`);
         }
         if (response.status === 429) {
-          throw new Error(`Adaption rate limit exceeded (429): ${errorDetails}`);
+          throw new Error(`Adaption rate limit exceeded (429 Too Many Requests): ${safeDetails}`);
         }
 
-        throw new Error(`Adaption API error [${response.status}]: ${errorDetails}`);
+        throw new Error(`Adaption API error [${response.status}]: ${safeDetails}`);
       }
 
       return (await response.json()) as T;
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Adaption API request timed out after ${timeout}ms.`);
+      }
+      if (err instanceof Error) {
+        err.message = this.sanitizeErrorMessage(err.message);
       }
       throw err;
     } finally {
@@ -166,10 +281,16 @@ export class AdaptionApiClient {
     maxRows?: number;
   }): Promise<DatasetAdaptResponse> {
     if (this.isMock) {
+      const rows = params.maxRows || 20;
       return {
         dataset_id: params.datasetId,
-        status: 'running',
-        message: 'Mock adaptation run initiated successfully.',
+        status: params.estimate ? 'estimated' : 'running',
+        estimated_cost: Number((rows * 0.005).toFixed(3)),
+        estimated_credits: Math.max(1, Math.ceil(rows / 10)),
+        row_count: rows,
+        message: params.estimate
+          ? `Estimated ${Math.max(1, Math.ceil(rows / 10))} credits for ${rows} prompt-completion rows.`
+          : 'Mock adaptation run initiated successfully.',
       };
     }
 
@@ -193,7 +314,7 @@ export class AdaptionApiClient {
   }
 
   /**
-   * Check status of dataset processing
+   * Checks status of dataset processing
    * GET /api/v1/datasets/{dataset_id}/status
    */
   public async getDatasetStatus(datasetId: string): Promise<DatasetStatusResponse> {
@@ -264,7 +385,8 @@ export class AdaptionApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to download Adaption dataset [HTTP ${response.status}]: ${response.statusText}`);
+      const safeText = this.sanitizeErrorMessage(response.statusText);
+      throw new Error(`Failed to download Adaption dataset [HTTP ${response.status}]: ${safeText}`);
     }
 
     return response.text();

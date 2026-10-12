@@ -4,7 +4,13 @@
  * Base URL: https://api.prod.adaptionlabs.ai/api/v1
  */
 
-export type AdaptionRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'unconfigured';
+export type AdaptionRunStatus =
+  | 'pending'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'unconfigured'
+  | 'blocked_confirmation_required';
 
 export type AdaptionTrainingType = 'instruction_dataset' | 'preference_pairs';
 
@@ -34,6 +40,15 @@ export interface AdaptionQualityMetrics {
   improvement_percent?: number;
 }
 
+export interface AdaptionEstimate {
+  recordsCount: number;
+  estimatedCredits: number;
+  estimatedCostUsd: number;
+  isMock: boolean;
+  requiresConfirmation: boolean;
+  explanation: string;
+}
+
 export interface AdaptionRunRecord {
   id: string; // Adaption dataset ID or unique run identifier
   name: string;
@@ -48,6 +63,9 @@ export interface AdaptionRunRecord {
   rawResults?: Record<string, unknown>;
   errorMessage?: string;
   isMock: boolean;
+  estimate?: AdaptionEstimate;
+  confirmed?: boolean;
+  idempotencyKey?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -57,6 +75,7 @@ export interface AdaptionConfig {
   apiKey?: string;
   baseUrl: string;
   isMock?: boolean;
+  timeoutMs?: number;
 }
 
 export interface AdaptionProviderStatus {
@@ -64,6 +83,8 @@ export interface AdaptionProviderStatus {
   baseUrl: string;
   hasApiKey: boolean;
   isMockMode: boolean;
+  apiKeyMasked?: string;
+  validationState: 'unconfigured' | 'configured' | 'simulation' | 'auth_failed' | 'connected';
   message: string;
 }
 
@@ -80,4 +101,6 @@ export interface RunAdaptionOptions {
   maxRows?: number;
   estimateOnly?: boolean;
   simulateRun?: boolean;
+  confirmed?: boolean;
+  idempotencyKey?: string;
 }

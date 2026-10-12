@@ -1,4 +1,10 @@
-export type AdaptionRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'unconfigured';
+export type AdaptionRunStatus =
+  | 'pending'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'unconfigured'
+  | 'blocked_confirmation_required';
 
 export interface AdaptionColumnMapping {
   prompt: string;
@@ -26,6 +32,15 @@ export interface AdaptionQualityMetrics {
   improvement_percent?: number;
 }
 
+export interface AdaptionEstimate {
+  recordsCount: number;
+  estimatedCredits: number;
+  estimatedCostUsd: number;
+  isMock: boolean;
+  requiresConfirmation: boolean;
+  explanation: string;
+}
+
 export interface AdaptionRunRecord {
   id: string;
   name: string;
@@ -40,6 +55,9 @@ export interface AdaptionRunRecord {
   rawResults?: Record<string, unknown>;
   errorMessage?: string;
   isMock: boolean;
+  estimate?: AdaptionEstimate;
+  confirmed?: boolean;
+  idempotencyKey?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -50,5 +68,7 @@ export interface AdaptionProviderStatus {
   baseUrl: string;
   hasApiKey: boolean;
   isMockMode: boolean;
+  apiKeyMasked?: string;
+  validationState?: 'unconfigured' | 'configured' | 'simulation' | 'auth_failed' | 'connected';
   message: string;
 }

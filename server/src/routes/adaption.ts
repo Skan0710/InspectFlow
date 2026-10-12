@@ -14,6 +14,68 @@ router.get('/status', (_req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/adaption/test-connection
+ * Tests live connectivity and authentication with upstream Adaption Labs API.
+ */
+router.post('/test-connection', async (_req: Request, res: Response) => {
+  try {
+    const result = await adaptionService.testConnection();
+    res.status(result.ok ? 200 : 400).json(result);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Connection test failed';
+    res.status(500).json({ ok: false, status: 500, message });
+  }
+});
+
+/**
+ * GET /api/adaption/test-connection
+ * Convenience GET alias for quick dashboard health check.
+ */
+router.get('/test-connection', async (_req: Request, res: Response) => {
+  try {
+    const result = await adaptionService.testConnection();
+    res.status(result.ok ? 200 : 400).json(result);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Connection test failed';
+    res.status(500).json({ ok: false, status: 500, message });
+  }
+});
+
+/**
+ * POST /api/adaption/estimate
+ * Calculates credit consumption and dollar cost estimate before launching a run.
+ */
+router.post('/estimate', (req: Request, res: Response) => {
+  try {
+    const { datasetType, maxRows, simulateRun } = req.body || {};
+    if (maxRows !== undefined && maxRows !== null && !(Number.isInteger(Number(maxRows)) && Number(maxRows) >= 1)) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'maxRows must be a positive integer.',
+      });
+      return;
+    }
+
+    const estimate = adaptionService.getEstimate({
+      datasetType,
+      maxRows: maxRows ? Number(maxRows) : undefined,
+      simulateRun: Boolean(simulateRun),
+    });
+
+    res.status(200).json({
+      success: true,
+      data: estimate,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to calculate estimate';
+    res.status(400).json({
+      error: 'EstimationError',
+      message,
+    });
+  }
+});
+
+/**
  * GET /api/adaption/runs
  * Returns list of all persisted Adaption runs.
  */
@@ -77,10 +139,16 @@ router.post('/prepare', (req: Request, res: Response) => {
 /**
  * POST /api/adaption/runs
  * Initiates an Adaption workflow run (or simulation).
+ * Requires confirmed: true for credit-consuming live runs.
  */
 router.post('/runs', async (req: Request, res: Response) => {
   try {
-    const { datasetName, datasetType, maxRows, estimateOnly, simulateRun } = req.body || {};
+    const { datasetName, datasetType, maxRows, estimateOnly, simulateRun, confirmed } = req.body || {};
+    const idempotencyKey =
+      (req.headers['idempotency-key'] as string) ||
+      (req.headers['x-idempotency-key'] as string) ||
+      (req.body?.idempotencyKey as string);
+
     if (maxRows !== undefined && maxRows !== null && !(Number.isInteger(Number(maxRows)) && Number(maxRows) >= 1)) {
       res.status(400).json({
         error: 'ValidationError',
@@ -95,14 +163,25 @@ router.post('/runs', async (req: Request, res: Response) => {
       maxRows: maxRows ? Number(maxRows) : undefined,
       estimateOnly: Boolean(estimateOnly),
       simulateRun: Boolean(simulateRun),
+      confirmed: Boolean(confirmed),
+      idempotencyKey: idempotencyKey || undefined,
     });
 
-    const statusCode = run.status === 'unconfigured' ? 200 : 201;
+    let statusCode = 201;
+    if (run.status === 'unconfigured' || run.status === 'blocked_confirmation_required') {
+      statusCode = 200;
+    }
+
+    let message = `Adaption run '${run.name}' initiated with ${run.recordsCount} records.`;
+    if (run.status === 'unconfigured') {
+      message = 'Adaption run recorded as unconfigured (ADAPTION_API_KEY missing).';
+    } else if (run.status === 'blocked_confirmation_required') {
+      message = run.errorMessage || 'Explicit confirmation required before launching paid run.';
+    }
+
     res.status(statusCode).json({
-      success: true,
-      message: run.status === 'unconfigured'
-        ? 'Adaption run recorded as unconfigured (ADAPTION_API_KEY missing).'
-        : `Adaption run '${run.name}' initiated with ${run.recordsCount} records.`,
+      success: run.status !== 'failed',
+      message,
       data: run,
     });
   } catch (err: unknown) {

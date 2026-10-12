@@ -8,12 +8,14 @@ import type {
   PrepareDatasetOptions,
   RunAdaptionOptions,
   AdaptionPromptPair,
+  AdaptionEstimate,
 } from './types.js';
 
 export class AdaptionService {
   private client: AdaptionApiClient;
   private preparer: DatasetPreparer;
   private store: FeedbackStore;
+  private recentIdempotencyMap = new Map<string, { runId: string; timestamp: number }>();
 
   constructor(client?: AdaptionApiClient, store?: FeedbackStore) {
     this.client = client || new AdaptionApiClient();
@@ -28,12 +30,20 @@ export class AdaptionService {
     const configured = this.client.isConfigured();
     const isMock = this.client.isMockMode();
     const hasApiKey = configured && !isMock;
+    const apiKeyMasked = this.client.getMaskedApiKey();
 
+    let validationState: AdaptionProviderStatus['validationState'] = 'unconfigured';
     let message = 'Adaption Labs API ready.';
+
     if (!configured) {
+      validationState = 'unconfigured';
       message = 'ADAPTION_API_KEY is not configured in server environment variables. Set ADAPTION_API_KEY or enable ADAPTION_MOCK=true for verified local evaluation.';
     } else if (isMock) {
+      validationState = 'simulation';
       message = 'Adaption Labs running in verified local simulation mode (ADAPTION_MOCK=true).';
+    } else {
+      validationState = 'configured';
+      message = `Adaption Labs credentials configured (${apiKeyMasked}). Live remote execution available.`;
     }
 
     return {
@@ -41,7 +51,48 @@ export class AdaptionService {
       baseUrl: this.client.getBaseUrl(),
       hasApiKey,
       isMockMode: isMock,
+      apiKeyMasked,
+      validationState,
       message,
+    };
+  }
+
+  /**
+   * Performs live API ping against Adaption Labs to verify upstream credentials.
+   */
+  public async testConnection(): Promise<{ ok: boolean; status: number; message: string }> {
+    return this.client.testConnection();
+  }
+
+  /**
+   * Calculates an upfront estimate of credits and costs before launching a live Adaption run.
+   */
+  public getEstimate(options: {
+    datasetType?: 'all' | 'genuine_import' | 'demo_sample';
+    maxRows?: number;
+    simulateRun?: boolean;
+  } = {}): AdaptionEstimate {
+    const prepared = this.prepareDataset({
+      datasetType: options.datasetType || 'all',
+      maxRows: options.maxRows || 25,
+      requireAnalyzed: false,
+    });
+
+    const isMock = Boolean(options.simulateRun || this.client.isMockMode() || !this.client.isConfigured());
+    const count = prepared.pairs.length;
+    // Standard Adaption Labs pricing guideline: ~1 credit per 10 rows (min 1 credit)
+    const estimatedCredits = Math.max(1, Math.ceil(count / 10));
+    const estimatedCostUsd = Number((count * 0.005).toFixed(3));
+
+    return {
+      recordsCount: count,
+      estimatedCredits,
+      estimatedCostUsd,
+      isMock,
+      requiresConfirmation: !isMock,
+      explanation: isMock
+        ? `Simulation Mode: 0 real credits consumed. Transforms ${count} feedback rows into prompt-completion pairs.`
+        : `Live Adaption Run: Requires estimated ${estimatedCredits} credits (~$${estimatedCostUsd} USD) for ${count} prompt-completion rows. Explicit confirmation is required.`,
     };
   }
 
@@ -68,11 +119,39 @@ export class AdaptionService {
 
   /**
    * Initiates an Adaption workflow run.
-   * If unconfigured and not in simulation mode, cleanly records an unconfigured run without blocking or throwing.
+   * Enforces duplicate run protection, credit cost estimation, and confirmation requirements.
    */
   public async runAdaption(options: RunAdaptionOptions = {}): Promise<AdaptionRunRecord> {
     const status = this.getStatus();
     const now = new Date().toISOString();
+
+    // 0. Idempotency Check: protect against double-clicks and repeated requests
+    if (options.idempotencyKey) {
+      const existingKey = this.recentIdempotencyMap.get(options.idempotencyKey);
+      if (existingKey && Date.now() - existingKey.timestamp < 300000) {
+        const cached = this.store.getAdaptionRunById(existingKey.runId);
+        if (cached) {
+          return cached;
+        }
+      }
+      const existingPersisted = this.store.getAdaptionRuns().find(
+        (r) => r.idempotencyKey === options.idempotencyKey
+      );
+      if (existingPersisted) {
+        return existingPersisted;
+      }
+    }
+
+    const runName = options.datasetName?.trim() || `InsightFlow-Feedback-Eval-${Date.now()}`;
+
+    // Concurrent run protection: if a run with the exact same name is currently running, return it
+    const activeRuns = this.store.getAdaptionRuns();
+    const inFlight = activeRuns.find(
+      (r) => (r.status === 'running' || r.status === 'pending') && r.name === runName
+    );
+    if (inFlight) {
+      return inFlight;
+    }
 
     // 1. Prepare representative customer-feedback instruction dataset
     const prepared = this.prepareDataset({
@@ -85,11 +164,17 @@ export class AdaptionService {
       throw new Error('No valid customer feedback records available to prepare for Adaption.');
     }
 
-    const runName = options.datasetName?.trim() || `InsightFlow-Feedback-Eval-${Date.now()}`;
     const runId = `ds_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
+    const isExplicitSimulate = Boolean(options.simulateRun);
+    const isMockRun = isExplicitSimulate || this.client.isMockMode();
+    const estimate = this.getEstimate({
+      datasetType: options.datasetType,
+      maxRows: options.maxRows,
+      simulateRun: isMockRun,
+    });
 
-    // Handle missing configuration without blocking the platform
-    if (!status.configured && !options.simulateRun) {
+    // 2. Handle missing configuration without blocking the platform
+    if (!status.configured && !isExplicitSimulate) {
       const unconfiguredRun: AdaptionRunRecord = {
         id: runId,
         name: runName,
@@ -102,20 +187,79 @@ export class AdaptionService {
         benchmarkIntegrated: false,
         errorMessage: 'Adaption API credentials (ADAPTION_API_KEY) are missing in server environment.',
         isMock: false,
+        estimate,
+        confirmed: false,
+        idempotencyKey: options.idempotencyKey,
         createdAt: now,
         updatedAt: now,
       };
 
       await this.store.saveAdaptionRun(unconfiguredRun);
+      if (options.idempotencyKey) {
+        this.recentIdempotencyMap.set(options.idempotencyKey, { runId: unconfiguredRun.id, timestamp: Date.now() });
+      }
       return unconfiguredRun;
     }
 
-    // Use mock client if simulateRun is explicitly requested
-    const activeClient = options.simulateRun ? new AdaptionApiClient({ isMock: true }) : this.client;
-    const isMockRun = activeClient.isMockMode() || Boolean(options.simulateRun);
+    // 3. Estimate-only request
+    if (options.estimateOnly) {
+      const estimateRecord: AdaptionRunRecord = {
+        id: runId,
+        name: runName,
+        datasetVersion: prepared.datasetVersion,
+        status: 'pending',
+        recordsCount: prepared.pairs.length,
+        trainingType: 'instruction_dataset',
+        columnMapping: prepared.columnMapping,
+        samplePairs: prepared.pairs.slice(0, 5),
+        benchmarkIntegrated: false,
+        isMock: isMockRun,
+        estimate,
+        confirmed: false,
+        idempotencyKey: options.idempotencyKey,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.store.saveAdaptionRun(estimateRecord);
+      if (options.idempotencyKey) {
+        this.recentIdempotencyMap.set(options.idempotencyKey, { runId: estimateRecord.id, timestamp: Date.now() });
+      }
+      return estimateRecord;
+    }
+
+    // 4. Paid/Credit Protection: Require explicit confirmation for live non-mock runs
+    if (!isMockRun && options.confirmed !== true) {
+      const blockedRecord: AdaptionRunRecord = {
+        id: runId,
+        name: runName,
+        datasetVersion: prepared.datasetVersion,
+        status: 'blocked_confirmation_required',
+        recordsCount: prepared.pairs.length,
+        trainingType: 'instruction_dataset',
+        columnMapping: prepared.columnMapping,
+        samplePairs: prepared.pairs.slice(0, 5),
+        benchmarkIntegrated: false,
+        errorMessage: `Confirmation required before starting live run. Estimated cost: ${estimate.estimatedCredits} credits. Please confirm to proceed.`,
+        isMock: false,
+        estimate,
+        confirmed: false,
+        idempotencyKey: options.idempotencyKey,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await this.store.saveAdaptionRun(blockedRecord);
+      if (options.idempotencyKey) {
+        this.recentIdempotencyMap.set(options.idempotencyKey, { runId: blockedRecord.id, timestamp: Date.now() });
+      }
+      return blockedRecord;
+    }
+
+    // Use active client
+    const activeClient = isExplicitSimulate ? new AdaptionApiClient({ isMock: true }) : this.client;
 
     try {
-      // 2. Ingest dataset
+      // 5. Ingest dataset
       const createRes = await activeClient.createDataset({
         name: runName,
         records: prepared.pairs.map((p) => ({
@@ -129,16 +273,16 @@ export class AdaptionService {
 
       const actualDatasetId = createRes.dataset_id || runId;
 
-      // 3. Initiate dataset adaptation
+      // 6. Initiate dataset adaptation
       await activeClient.adaptDataset({
         datasetId: actualDatasetId,
         columnMapping: prepared.columnMapping,
         trainingType: 'instruction_dataset',
-        estimate: options.estimateOnly ?? false,
+        estimate: false,
         maxRows: options.maxRows,
       });
 
-      // 4. Retrieve evaluation metrics
+      // 7. Retrieve evaluation metrics
       let qualityMetrics = undefined;
       let rawResults = undefined;
       let runStatus: AdaptionRunRecord['status'] = 'running';
@@ -152,7 +296,7 @@ export class AdaptionService {
         }
       } catch (evalErr) {
         // If evaluation is still in progress on remote API
-        console.warn(`[AdaptionService] Evaluation for ${actualDatasetId} not yet ready:`, evalErr);
+        console.warn(`[AdaptionService] Evaluation for ${actualDatasetId} not yet ready:`, activeClient.sanitizeErrorMessage(String(evalErr)));
       }
 
       const runRecord: AdaptionRunRecord = {
@@ -168,15 +312,22 @@ export class AdaptionService {
         benchmarkIntegrated: runStatus === 'succeeded',
         rawResults,
         isMock: isMockRun,
+        estimate,
+        confirmed: Boolean(options.confirmed),
+        idempotencyKey: options.idempotencyKey,
         createdAt: now,
         updatedAt: now,
         completedAt: runStatus === 'succeeded' ? now : undefined,
       };
 
       await this.store.saveAdaptionRun(runRecord);
+      if (options.idempotencyKey) {
+        this.recentIdempotencyMap.set(options.idempotencyKey, { runId: runRecord.id, timestamp: Date.now() });
+      }
       return runRecord;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown Adaption execution error';
+      const rawError = err instanceof Error ? err.message : 'Unknown Adaption execution error';
+      const errorMessage = activeClient.sanitizeErrorMessage(rawError);
       console.error('[AdaptionService] Adaption run failed:', errorMessage);
 
       const failedRecord: AdaptionRunRecord = {
@@ -191,11 +342,17 @@ export class AdaptionService {
         benchmarkIntegrated: false,
         errorMessage,
         isMock: isMockRun,
+        estimate,
+        confirmed: Boolean(options.confirmed),
+        idempotencyKey: options.idempotencyKey,
         createdAt: now,
         updatedAt: now,
       };
 
       await this.store.saveAdaptionRun(failedRecord);
+      if (options.idempotencyKey) {
+        this.recentIdempotencyMap.set(options.idempotencyKey, { runId: failedRecord.id, timestamp: Date.now() });
+      }
       return failedRecord;
     }
   }
@@ -234,7 +391,8 @@ export class AdaptionService {
       await this.store.saveAdaptionRun(existing);
       return existing;
     } catch (err: unknown) {
-      existing.errorMessage = err instanceof Error ? err.message : 'Failed to sync with Adaption API';
+      const raw = err instanceof Error ? err.message : 'Failed to sync with Adaption API';
+      existing.errorMessage = activeClient.sanitizeErrorMessage(raw);
       existing.updatedAt = now;
       await this.store.saveAdaptionRun(existing);
       return existing;

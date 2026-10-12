@@ -283,7 +283,7 @@ describe('InsightFlow Adaption Labs Integration & Evaluation Workflow', () => {
         },
       ]);
 
-      const run = await service.runAdaption({ simulateRun: false });
+      const run = await service.runAdaption({ simulateRun: false, confirmed: true });
 
       assert.strictEqual(run.status, 'failed');
       assert.ok(run.errorMessage?.includes('401 Unauthorized'));
@@ -292,6 +292,37 @@ describe('InsightFlow Adaption Labs Integration & Evaluation Workflow', () => {
       const persisted = store.getAdaptionRunById(run.id);
       assert.ok(persisted);
       assert.strictEqual(persisted.status, 'failed');
+    });
+
+    test('sanitizes upstream error messages to prevent secret or token leakage', async () => {
+      const secretKey = 'pt_live_super_secret_token_12345';
+      const leakyClient = new AdaptionApiClient({ apiKey: secretKey, isMock: false });
+      leakyClient.createDataset = async () => {
+        throw new Error(`Upstream failed for bearer Bearer ${secretKey}`);
+      };
+
+      const service = new AdaptionService(leakyClient, store);
+
+      await store.saveRecordsChunk([
+        {
+          id: 'fb-leak-1',
+          review: 'Testing secret sanitization and redaction invariant in Adaption workflow.',
+          category: 'Customer Service',
+          source: 'Survey',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-leak-1',
+          rowNumber: 1,
+          batchId: 'batch-1',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const run = await service.runAdaption({ simulateRun: false, confirmed: true });
+
+      assert.strictEqual(run.status, 'failed');
+      assert.ok(!run.errorMessage?.includes(secretKey), 'API key must never appear in errorMessage');
+      assert.ok(run.errorMessage?.includes('[REDACTED]'), 'Secret must be sanitized to [REDACTED]');
     });
   });
 
@@ -367,6 +398,108 @@ describe('InsightFlow Adaption Labs Integration & Evaluation Workflow', () => {
       assert.ok(Array.isArray(body.data));
       assert.strictEqual(body.data[0].category, 'Operational Issues');
       assert.ok(body.data[0].prompt.includes('Stripe webhook sync latency'));
+    });
+  });
+
+  describe('6. Upfront Cost Estimation, Confirmation & Idempotency', () => {
+    test('POST /api/adaption/estimate calculates credit consumption and dollars upfront', async () => {
+      await store.saveRecordsChunk([
+        {
+          id: 'fb-est-1',
+          review: 'Product checkout flow needs responsive redesign on iPad browsers.',
+          category: 'Product Feedback',
+          source: 'Survey',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-est-1',
+          rowNumber: 1,
+          batchId: 'batch-1',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const res = await fetch(`${baseUrl}/estimate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxRows: 10, simulateRun: true }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const json: any = await res.json();
+      assert.strictEqual(json.success, true);
+      assert.strictEqual(json.data.recordsCount, 1);
+      assert.ok(json.data.estimatedCredits >= 1);
+      assert.ok(typeof json.data.estimatedCostUsd === 'number');
+      assert.ok(json.data.explanation.includes('Simulation Mode'));
+    });
+
+    test('requires explicit confirmation before starting live credit-consuming run', async () => {
+      const liveClient = new AdaptionApiClient({ apiKey: 'pt_live_dummy_test', isMock: false });
+      const service = new AdaptionService(liveClient, store);
+
+      await store.saveRecordsChunk([
+        {
+          id: 'fb-confirm-1',
+          review: 'Critical bug in ledger export during monthly reconciliation.',
+          category: 'Operational Issues',
+          source: 'Survey',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-conf-1',
+          rowNumber: 1,
+          batchId: 'batch-1',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ]);
+
+      // Trigger without confirmed: true
+      const run = await service.runAdaption({ simulateRun: false, confirmed: false });
+      assert.strictEqual(run.status, 'blocked_confirmation_required');
+      assert.strictEqual(run.confirmed, false);
+      assert.ok(run.estimate);
+      assert.ok(run.errorMessage?.includes('Confirmation required'));
+    });
+
+    test('enforces idempotency and prevents duplicate concurrent runs', async () => {
+      await store.saveRecordsChunk([
+        {
+          id: 'fb-idemp-1',
+          review: 'Fast response times observed on cloud compute clusters.',
+          category: 'Product Feedback',
+          source: 'Survey',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-idemp-1',
+          rowNumber: 1,
+          batchId: 'batch-1',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const key = 'idem-unique-key-999';
+      const res1 = await fetch(`${baseUrl}/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': key,
+        },
+        body: JSON.stringify({ simulateRun: true }),
+      });
+      const body1: any = await res1.json();
+      assert.strictEqual(res1.status, 201);
+
+      // Repeat identical request with same idempotency key
+      const res2 = await fetch(`${baseUrl}/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': key,
+        },
+        body: JSON.stringify({ simulateRun: true }),
+      });
+      const body2: any = await res2.json();
+
+      assert.strictEqual(body2.data.id, body1.data.id, 'Must return same run ID for repeated request');
     });
   });
 });
