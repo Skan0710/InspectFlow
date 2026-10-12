@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ResponsiveContainer,
@@ -29,6 +29,8 @@ import { Select } from '../components/ui/Select';
 import { AnalysisProgressCard } from '../components/feedback/AnalysisProgressCard';
 import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset } from '../api/client';
 import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
+import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
+import { ProductStorySection } from '../components/landing/ProductStorySection';
 
 const SENTIMENT_COLORS = {
   positive: '#10b981', // Emerald
@@ -68,6 +70,59 @@ export const OverviewPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isSeedingSample, setIsSeedingSample] = useState<boolean>(false);
+  const pageContainerRef = useRef<HTMLDivElement>(null);
+
+  useGsapContext(
+    pageContainerRef,
+    () => {
+      if (prefersReducedMotion() || isLoading) return;
+
+      // 1. Entrance for top header
+      gsap.from('.overview-header', {
+        opacity: 0,
+        y: 18,
+        duration: 0.65,
+        ease: 'power3.out',
+      });
+
+      // 2. Staggered reveal for KPI cards
+      gsap.from('.overview-kpi-card', {
+        opacity: 0,
+        y: 22,
+        stagger: 0.08,
+        duration: 0.6,
+        ease: 'power2.out',
+        delay: 0.05,
+      });
+
+      // 3. ScrollTrigger reveal for charts section
+      gsap.from('.overview-charts-section', {
+        scrollTrigger: {
+          trigger: '.overview-charts-section',
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 26,
+        duration: 0.75,
+        ease: 'power3.out',
+      });
+
+      // 4. ScrollTrigger reveal for priority issues queue
+      gsap.from('.overview-priority-section', {
+        scrollTrigger: {
+          trigger: '.overview-priority-section',
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 26,
+        duration: 0.75,
+        ease: 'power3.out',
+      });
+    },
+    [isLoading]
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -151,9 +206,9 @@ export const OverviewPage: React.FC = () => {
   })) : [];
 
   return (
-    <div className="space-y-6">
+    <div ref={pageContainerRef} className="space-y-6">
       {/* Page Header with Scope Controls */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
+      <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             Intelligence Overview
@@ -310,7 +365,7 @@ export const OverviewPage: React.FC = () => {
       {/* 1. KPI Cards Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Total Feedback Records */}
-        <Card>
+        <Card className="overview-kpi-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Total Feedback</span>
@@ -340,7 +395,7 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 2: Analyzed Feedback */}
-        <Card>
+        <Card className="overview-kpi-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>AI Analyzed Volume</span>
@@ -365,7 +420,7 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 3: Negative Feedback */}
-        <Card>
+        <Card className="overview-kpi-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Negative Friction</span>
@@ -394,7 +449,7 @@ export const OverviewPage: React.FC = () => {
         </Card>
 
         {/* KPI 4: Open Priority Issues */}
-        <Card>
+        <Card className="overview-kpi-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <span>Triage Queue</span>
@@ -425,7 +480,7 @@ export const OverviewPage: React.FC = () => {
       </div>
 
       {/* 2 & 3. Visual Charts Section: Sentiment Donut & Category Distribution */}
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="overview-charts-section grid gap-6 lg:grid-cols-12">
         {/* Sentiment Distribution Chart (Donut) */}
         <Card className="lg:col-span-5 flex flex-col justify-between">
           <CardHeader className="pb-2">
@@ -672,7 +727,7 @@ export const OverviewPage: React.FC = () => {
       </div>
 
       {/* 4 & 5. Frequently Reported Issues and Priority Queue Section */}
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="overview-priority-section grid gap-6 lg:grid-cols-12">
         {/* 4. Frequently Reported Issues Ranked by Actual Counts */}
         <Card className="lg:col-span-6">
           <CardHeader className="pb-3 border-b border-slate-100">
@@ -917,6 +972,9 @@ export const OverviewPage: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* End-to-End Product Storytelling Journey Section */}
+      <ProductStorySection />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import type { HealthResponse } from '../types/api';
+import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 
 const mockTelemetryData = [
   { time: '00:00', requests: 120, latency: 18 },
@@ -36,6 +37,19 @@ const mockTelemetryData = [
 export const Home: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const homeRef = useRef<HTMLDivElement>(null);
+
+  useGsapContext(homeRef, () => {
+    if (prefersReducedMotion()) return;
+
+    gsap.from(['.home-hero-badge', '.home-hero-title', '.home-hero-desc', '.home-hero-ctas'], {
+      opacity: 0,
+      y: 22,
+      stagger: 0.1,
+      duration: 0.7,
+      ease: 'power3.out',
+    });
+  });
 
   const fetchHealth = async () => {
     setLoading(true);
@@ -59,7 +73,7 @@ export const Home: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-12 py-8">
+    <div ref={homeRef} className="space-y-12 py-8">
       {/* Hero Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -71,24 +85,24 @@ export const Home: React.FC = () => {
         <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-violet-600/15 blur-3xl" />
 
         <div className="relative z-10 max-w-3xl space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300">
+          <div className="home-hero-badge inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300">
             <Sparkles className="h-3.5 w-3.5" />
             Build Battle 2026 Ready Scaffold
           </div>
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl sm:leading-tight">
+          <h1 className="home-hero-title text-3xl font-extrabold tracking-tight text-white sm:text-5xl sm:leading-tight">
             Welcome to{' '}
             <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
               InsightFlow
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg leading-relaxed text-slate-300">
+          <p className="home-hero-desc text-base sm:text-lg leading-relaxed text-slate-300">
             A production-ready full-stack TypeScript scaffold. Equipped with React 19, Vite, Tailwind CSS, 
             Lucide Icons, Framer Motion, Recharts, and Express backend with hot reloading.
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="home-hero-ctas flex flex-wrap items-center gap-3 pt-2">
             <Link
               to="/status"
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition-all hover:bg-indigo-500 hover:shadow-indigo-600/40"
