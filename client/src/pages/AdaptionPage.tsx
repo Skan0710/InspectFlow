@@ -146,7 +146,7 @@ export const AdaptionPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <span>Model</span>
-              <FlipText className="bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800 bg-clip-text text-transparent">
+              <FlipText className="text-indigo-300">
                 Adaption Labs
               </FlipText>
             </h2>

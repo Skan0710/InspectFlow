@@ -163,7 +163,7 @@ export const ChatCopilot: React.FC = () => {
           id={panelId}
           role="dialog"
           aria-label="InsightFlow AI Insights chat"
-          className="fixed bottom-24 right-4 z-30 flex h-[min(34rem,calc(100dvh-11rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-2xl shadow-indigo-950/20 sm:right-6"
+          className="app-theme fixed bottom-24 right-4 z-30 flex h-[min(34rem,calc(100dvh-11rem))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-indigo-100 bg-indigo-950 shadow-2xl shadow-indigo-950/20 sm:right-6"
         >
           <header className="flex items-center justify-between gap-3 bg-gradient-to-r from-indigo-950 to-indigo-800 px-4 py-3 text-white">
             <div className="flex min-w-0 items-center gap-2.5">

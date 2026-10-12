@@ -19,7 +19,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Badge } from '../components/ui/Badge';
 import { fetchDatasetStatus } from '../api/client';
 import type { DatasetStatus } from '../types/analytics';
-import { getInitials, resetProfile, saveProfile, useProfile, type UserProfile } from '../lib/profile';
+import { ACCENTS, DEFAULT_PROFILE, getInitials, resetProfile, saveProfile, useProfile, type AccentKey, type UserProfile } from '../lib/profile';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -64,7 +64,8 @@ export const ProfilePage: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (emailError) return;
-    const next = {
+    const next: UserProfile = {
+      accent: form.accent,
       name: form.name.trim(),
       email: form.email.trim(),
       role: form.role.trim(),
@@ -78,7 +79,7 @@ export const ProfilePage: React.FC = () => {
 
   const handleReset = () => {
     resetProfile();
-    setForm({ name: 'Guest User', email: '', role: 'Workspace member', organization: '', bio: '' });
+    setForm(DEFAULT_PROFILE);
     setSaved(false);
   };
 
@@ -88,7 +89,7 @@ export const ProfilePage: React.FC = () => {
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-950 via-indigo-800 to-indigo-600 p-6 text-white sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-violet-400/25 blur-3xl" />
         <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-          <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br from-indigo-200 to-violet-400 text-2xl font-extrabold text-indigo-950 shadow-xl shadow-indigo-950/40">
+          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br ${ACCENTS[stored.accent]} text-2xl font-extrabold text-indigo-950! shadow-xl shadow-indigo-950/40`}>
             {getInitials(stored.name)}
           </span>
           <div className="min-w-0 space-y-1.5">
@@ -174,6 +175,27 @@ export const ProfilePage: React.FC = () => {
                 rows={3}
                 placeholder="A line about what you use InsightFlow for"
               />
+
+              <fieldset>
+                <legend className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-700">Avatar colour</legend>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(ACCENTS) as AccentKey[]).map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-label={`${key} avatar`}
+                      aria-pressed={form.accent === key}
+                      onClick={() => {
+                        setSaved(false);
+                        setForm((prev) => ({ ...prev, accent: key }));
+                      }}
+                      className={`h-9 w-9 rounded-full bg-gradient-to-br ${ACCENTS[key]} ring-offset-2 ring-offset-transparent transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
+                        form.accent === key ? 'scale-110 ring-2 ring-white' : 'opacity-80 hover:opacity-100'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </fieldset>
 
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <Button type="button" variant="ghost" size="sm" onClick={handleReset} leftIcon={<RotateCcw className="h-4 w-4" />}>

@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X, Settings, Sparkles, User, ChevronDown } from 'lucide-react';
 import { navigationItems } from './navigation';
 import { SpotlightNavbar } from '../ui/spotlight-navbar';
-import { getInitials, useProfile } from '../../lib/profile';
+import { ACCENTS, getInitials, useProfile } from '../../lib/profile';
 
 const mobileLink =
   'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300';
@@ -75,7 +75,7 @@ export const TopNavbar: React.FC = () => {
               aria-label="Open profile menu"
               className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 py-1 pl-1 pr-2.5 text-white backdrop-blur-md transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-300 to-violet-500 text-xs font-bold text-indigo-950">
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${ACCENTS[profile.accent]} text-xs font-bold text-indigo-950`}>
                 {initials}
               </span>
               <span className="hidden max-w-[8rem] truncate text-sm font-medium sm:block">{profile.name}</span>
@@ -85,17 +85,17 @@ export const TopNavbar: React.FC = () => {
             {profileOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-indigo-200/60 bg-white shadow-2xl shadow-indigo-950/30"
+                className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-white/15 bg-indigo-950 shadow-2xl shadow-black/40"
               >
-                <div className="border-b border-slate-100 bg-indigo-50/70 px-4 py-3">
-                  <p className="truncate text-sm font-semibold text-slate-900">{profile.name}</p>
-                  <p className="truncate text-xs text-slate-500">{profile.email || profile.role}</p>
+                <div className="border-b border-white/10 bg-white/5 px-4 py-3">
+                  <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
+                  <p className="truncate text-xs text-indigo-200/80">{profile.email || profile.role}</p>
                 </div>
                 <div className="p-1.5">
                   <Link
                     to="/profile"
                     role="menuitem"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-100 hover:bg-white/10 hover:text-white"
                   >
                     <User className="h-4 w-4" />
                     View profile
@@ -103,7 +103,7 @@ export const TopNavbar: React.FC = () => {
                   <Link
                     to="/settings"
                     role="menuitem"
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-100 hover:bg-white/10 hover:text-white"
                   >
                     <Settings className="h-4 w-4" />
                     Settings

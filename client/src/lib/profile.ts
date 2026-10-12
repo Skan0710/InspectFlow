@@ -1,11 +1,27 @@
 import { useSyncExternalStore } from 'react';
 
+export const ACCENTS = {
+  indigo: 'from-indigo-300 to-indigo-500',
+  violet: 'from-violet-300 to-violet-500',
+  sky: 'from-sky-300 to-indigo-500',
+  emerald: 'from-emerald-300 to-teal-500',
+  rose: 'from-rose-300 to-fuchsia-500',
+  amber: 'from-amber-300 to-orange-500',
+} as const;
+
+export type AccentKey = keyof typeof ACCENTS;
+
+export function isAccent(value: unknown): value is AccentKey {
+  return typeof value === 'string' && value in ACCENTS;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
   role: string;
   organization: string;
   bio: string;
+  accent: AccentKey;
 }
 
 const STORAGE_KEY = 'insightflow.profile.v1';
@@ -16,6 +32,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   role: 'Workspace member',
   organization: '',
   bio: '',
+  accent: 'violet',
 };
 
 function read(): UserProfile {
@@ -29,6 +46,7 @@ function read(): UserProfile {
       role: typeof parsed.role === 'string' ? parsed.role : DEFAULT_PROFILE.role,
       organization: typeof parsed.organization === 'string' ? parsed.organization : '',
       bio: typeof parsed.bio === 'string' ? parsed.bio : '',
+      accent: isAccent(parsed.accent) ? parsed.accent : DEFAULT_PROFILE.accent,
     };
   } catch {
     return DEFAULT_PROFILE;

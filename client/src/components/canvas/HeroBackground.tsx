@@ -38,6 +38,7 @@ export const HeroBackground: React.FC<HeroBackgroundProps> = ({ className = '', 
       <div className="absolute -bottom-1/3 right-[-10%] h-[110%] w-[60%] rounded-full bg-gradient-to-tl from-violet-600/40 via-indigo-500/25 to-transparent blur-3xl" />
       {useShader && <ShaderBackground className="absolute inset-0 h-full w-full" />}
       {/* Legibility scrim: keeps headline contrast without hiding the shader */}
+      {fixed && <div className="absolute inset-0 bg-indigo-950/50" />}
       <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/70 via-indigo-950/30 to-indigo-950/10" />
     </div>
   );

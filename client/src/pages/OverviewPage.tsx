@@ -239,7 +239,7 @@ export const OverviewPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link
                 to="/feedback"
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-900 shadow-lg shadow-indigo-950/30 transition-colors hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
+                className="inline-flex items-center gap-2 rounded-xl bg-white! px-5 py-2.5 text-sm font-semibold text-indigo-900! shadow-lg shadow-indigo-950/30 transition-colors hover:bg-indigo-50! focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200"
               >
                 <Database className="h-4 w-4" />
                 Explore feedback
@@ -262,8 +262,8 @@ export const OverviewPage: React.FC = () => {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-7xl px-3 pb-8 sm:px-6 lg:px-8">
-      <div className="space-y-6 rounded-3xl border border-white/50 bg-white/90 p-4 shadow-2xl shadow-indigo-950/30 backdrop-blur-md sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+      <div className="space-y-6">
       {/* Page Header with Scope Controls */}
       <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
         <div>

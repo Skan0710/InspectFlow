@@ -211,7 +211,7 @@ export const ProductStorySection: React.FC = () => {
       </div>
 
       {/* 3D Diagonal Showcase Carousel */}
-      <div className="rounded-2xl border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6 text-white shadow-xl overflow-hidden relative">
+      <div className="rounded-2xl border border-indigo-400/25 bg-gradient-to-b from-indigo-950 via-[#171553] to-indigo-950 p-6 text-white shadow-xl overflow-hidden relative">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 relative z-10">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-semibold text-indigo-300">
@@ -227,13 +227,17 @@ export const ProductStorySection: React.FC = () => {
           </div>
           <span className="text-xs text-slate-400 font-mono hidden sm:inline-block">Use arrows or drag to explore</span>
         </div>
-        <div className="h-96 sm:h-[420px] w-full relative">
+        <div className="h-[480px] sm:h-[540px] w-full relative">
           <DiagonalCarousel
             items={CAROUSEL_ITEMS}
-            slideSize={280}
-            rotationStep={22}
-            verticalStep={70}
+            slideSize={240}
+            rotationStep={18}
+            verticalStep={56}
+            inactiveScale={0.68}
             loop={true}
+            imageClassName="ring-1 ring-white/25 shadow-2xl shadow-black/40"
+            labelClassName="text-indigo-100 font-medium"
+            controlsClassName="border-white/20 bg-indigo-950/80 text-white backdrop-blur-md"
             className="h-full"
           />
         </div>

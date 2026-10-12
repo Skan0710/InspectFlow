@@ -85,7 +85,7 @@ function QrArt({ url, size = 170, onReady }: { url: string; size?: number; onRea
 }
 
 export interface ShareSheetProps { url?: string; title?: string; variant?: 'default' | 'message' | 'compact'; theme?: 'auto' | 'dark' | 'light'; initialOpen?: boolean; onShare?: (event: { channel: string; url: string; message: string }) => void }
-export function ShareSheet({ url = sampleUrl, title = 'Share this page', variant = 'default', theme = 'auto', initialOpen = false, onShare }: ShareSheetProps) {
+export function ShareSheet({ url = sampleUrl, title = 'Share this page', variant = 'default', theme = 'dark', initialOpen = false, onShare }: ShareSheetProps) {
   const mounted = useSyncExternalStore(subscribeToMount, getClientMountSnapshot, getServerMountSnapshot)
   const [open, setOpen] = useState(initialOpen)
   const [view, setView] = useState<'share' | 'more' | 'qr' | 'copied'>('share')
