@@ -22,6 +22,9 @@ export interface UserProfile {
   organization: string;
   bio: string;
   accent: AccentKey;
+  avatarUrl?: string;
+  isGoogleAuth?: boolean;
+  googleId?: string;
 }
 
 const STORAGE_KEY = 'insightflow.profile.v1';
@@ -33,6 +36,7 @@ export const DEFAULT_PROFILE: UserProfile = {
   organization: '',
   bio: '',
   accent: 'violet',
+  isGoogleAuth: false,
 };
 
 function read(): UserProfile {
@@ -47,6 +51,9 @@ function read(): UserProfile {
       organization: typeof parsed.organization === 'string' ? parsed.organization : '',
       bio: typeof parsed.bio === 'string' ? parsed.bio : '',
       accent: isAccent(parsed.accent) ? parsed.accent : DEFAULT_PROFILE.accent,
+      avatarUrl: typeof parsed.avatarUrl === 'string' ? parsed.avatarUrl : undefined,
+      isGoogleAuth: Boolean(parsed.isGoogleAuth),
+      googleId: typeof parsed.googleId === 'string' ? parsed.googleId : undefined,
     };
   } catch {
     return DEFAULT_PROFILE;
@@ -74,6 +81,44 @@ export function resetProfile(): void {
   current = DEFAULT_PROFILE;
   try {
     localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  emit();
+}
+
+export function loginWithGoogle(payload: {
+  id?: string;
+  email: string;
+  name: string;
+  picture?: string;
+}): void {
+  current = {
+    ...current,
+    name: payload.name.trim() || current.name || DEFAULT_PROFILE.name,
+    email: payload.email.trim() || current.email,
+    avatarUrl: payload.picture,
+    isGoogleAuth: true,
+    googleId: payload.id,
+    role: current.role === DEFAULT_PROFILE.role ? 'Verified Google Member' : current.role,
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+  emit();
+}
+
+export function logoutGoogle(): void {
+  current = {
+    ...current,
+    isGoogleAuth: false,
+    googleId: undefined,
+    avatarUrl: undefined,
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
   } catch {
     // ignore
   }

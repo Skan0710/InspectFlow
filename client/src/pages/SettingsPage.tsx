@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Save, 
   Key, 
   Sliders, 
   CheckCircle2, 
   Building2,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -12,11 +13,27 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { getStoredGoogleClientId, setStoredGoogleClientId, resolveGoogleClientId } from '../lib/googleAuth';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'general' | 'integrations' | 'ai'>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(() => getStoredGoogleClientId());
+  const [clientIdSaved, setClientIdSaved] = useState(false);
+
+  useEffect(() => {
+    resolveGoogleClientId().then((id) => {
+      if (id && !googleClientId) setGoogleClientId(id);
+    });
+  }, []);
+
+  const handleSaveGoogleClientId = () => {
+    setStoredGoogleClientId(googleClientId);
+    setClientIdSaved(true);
+    setTimeout(() => setClientIdSaved(false), 2500);
+  };
 
   const handleSave = () => {
     setIsSaving(true);
@@ -176,38 +193,97 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {activeTab === 'integrations' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Data Ingestion Sources</CardTitle>
-            <CardDescription>Manage bidirectional synchronization with your support and CRM toolchains.</CardDescription>
-          </CardHeader>
-          <CardContent className="divide-y divide-slate-100">
-            {[
-              { name: 'Zendesk Support', type: 'Tickets & Satisfaction Ratings', status: 'Connected', badge: 'success' as const, sync: '2 mins ago' },
-              { name: 'Salesforce CRM', type: 'Accounts, Opportunities & Notes', status: 'Connected', badge: 'success' as const, sync: '15 mins ago' },
-              { name: 'Gong Call Intelligence', type: 'Recorded Customer Transcripts', status: 'Connected', badge: 'success' as const, sync: '1 hour ago' },
-              { name: 'Jira Software Cloud', type: 'Engineering Action Item Sync', status: 'Token Expired', badge: 'danger' as const, sync: 'Requires Re-auth' },
-            ].map((conn, idx) => (
-              <div key={idx} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-slate-900 text-sm">{conn.name}</div>
-                  <div className="text-xs text-slate-500">{conn.type}</div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                    Google OAuth 2.0 Authentication
+                  </CardTitle>
+                  <CardDescription>
+                    Configure Google Identity Services client credentials for single sign-on (SSO).
+                  </CardDescription>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right hidden sm:block">
-                    <span className="text-[11px] text-slate-400 font-mono">Last sync: {conn.sync}</span>
-                  </div>
-                  <Badge variant={conn.badge} size="sm" dot>
-                    {conn.status}
-                  </Badge>
-                  <Button variant="outline" size="sm" className="h-8">
-                    Configure
+                <Badge variant={googleClientId ? 'success' : 'neutral'} size="sm" dot>
+                  {googleClientId ? 'Configured' : 'Demo Mode'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-4">
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  To enable production Google login, create an OAuth 2.0 Client ID in the{' '}
+                  <span className="font-semibold text-slate-800">Google Cloud Console</span> with Authorized JavaScript Origins set to{' '}
+                  <code className="rounded bg-white px-1.5 py-0.5 text-indigo-700 font-mono text-[11px] border border-slate-200">
+                    http://localhost:5173
+                  </code>{' '}
+                  and paste the Client ID below. In demo mode without a client ID, instant one-click test authentication is enabled.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700">Google Client ID</label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    value={googleClientId}
+                    onChange={(e) => setGoogleClientId(e.target.value)}
+                    placeholder="e.g. 123456789-abcdef.apps.googleusercontent.com"
+                    className="font-mono text-xs flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveGoogleClientId}
+                    className="shrink-0 h-10"
+                    leftIcon={<Save className="h-4 w-4" />}
+                  >
+                    {clientIdSaved ? 'Saved!' : 'Save Client ID'}
                   </Button>
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs text-slate-500 font-medium">Test Authentication:</span>
+                <GoogleSignInButton variant="compact" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Data Ingestion Sources</CardTitle>
+              <CardDescription>Manage bidirectional synchronization with your support and CRM toolchains.</CardDescription>
+            </CardHeader>
+            <CardContent className="divide-y divide-slate-100">
+              {[
+                { name: 'Zendesk Support', type: 'Tickets & Satisfaction Ratings', status: 'Connected', badge: 'success' as const, sync: '2 mins ago' },
+                { name: 'Salesforce CRM', type: 'Accounts, Opportunities & Notes', status: 'Connected', badge: 'success' as const, sync: '15 mins ago' },
+                { name: 'Gong Call Intelligence', type: 'Recorded Customer Transcripts', status: 'Connected', badge: 'success' as const, sync: '1 hour ago' },
+                { name: 'Jira Software Cloud', type: 'Engineering Action Item Sync', status: 'Token Expired', badge: 'danger' as const, sync: 'Requires Re-auth' },
+              ].map((conn, idx) => (
+                <div key={idx} className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0">
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm">{conn.name}</div>
+                    <div className="text-xs text-slate-500">{conn.type}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right hidden sm:block">
+                      <span className="text-[11px] text-slate-400 font-mono">Last sync: {conn.sync}</span>
+                    </div>
+                    <Badge variant={conn.badge} size="sm" dot>
+                      {conn.status}
+                    </Badge>
+                    <Button variant="outline" size="sm" className="h-8">
+                      Configure
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {activeTab === 'ai' && (

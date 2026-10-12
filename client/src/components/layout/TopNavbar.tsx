@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Menu, X, Settings, Sparkles, User, ChevronDown } from 'lucide-react';
+import { Menu, X, Settings, Sparkles, User, ChevronDown, LogOut } from 'lucide-react';
 import { navigationItems } from './navigation';
 import { SpotlightNavbar } from '../ui/spotlight-navbar';
-import { ACCENTS, getInitials, useProfile } from '../../lib/profile';
+import { ACCENTS, getInitials, useProfile, logoutGoogle } from '../../lib/profile';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 
 const mobileLink =
   'flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300';
@@ -67,6 +68,12 @@ export const TopNavbar: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {!profile.isGoogleAuth && (
+            <div className="hidden sm:block">
+              <GoogleSignInButton variant="compact" />
+            </div>
+          )}
+
           <div className="relative" ref={profileRef}>
             <button
               type="button"
@@ -76,9 +83,17 @@ export const TopNavbar: React.FC = () => {
               aria-label="Open profile menu"
               className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 py-1 pl-1 pr-2.5 text-white backdrop-blur-md transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
             >
-              <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${ACCENTS[profile.accent]} text-xs font-bold text-indigo-950`}>
-                {initials}
-              </span>
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.name}
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-white/30"
+                />
+              ) : (
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br ${ACCENTS[profile.accent]} text-xs font-bold text-indigo-950`}>
+                  {initials}
+                </span>
+              )}
               <span className="hidden max-w-[8rem] truncate text-sm font-medium sm:block">{profile.name}</span>
               <ChevronDown className={`h-4 w-4 text-indigo-200 transition-transform ${profileOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -86,16 +101,24 @@ export const TopNavbar: React.FC = () => {
             {profileOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-white/15 bg-indigo-950 shadow-2xl shadow-black/40"
+                className="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-white/15 bg-indigo-950 shadow-2xl shadow-black/40 z-50"
               >
                 <div className="border-b border-white/10 bg-white/5 px-4 py-3">
-                  <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
-                  <p className="truncate text-xs text-indigo-50">{profile.email || profile.role}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
+                    {profile.isGoogleAuth && (
+                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
+                        Google
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-indigo-100">{profile.email || profile.role}</p>
                 </div>
-                <div className="p-1.5">
+                <div className="p-1.5 space-y-0.5">
                   <Link
                     to="/profile"
                     role="menuitem"
+                    onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-100 hover:bg-white/10 hover:text-white"
                   >
                     <User className="h-4 w-4" />
@@ -104,11 +127,37 @@ export const TopNavbar: React.FC = () => {
                   <Link
                     to="/settings"
                     role="menuitem"
+                    onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-indigo-100 hover:bg-white/10 hover:text-white"
                   >
                     <Settings className="h-4 w-4" />
                     Settings
                   </Link>
+
+                  <div className="pt-1 mt-1 border-t border-white/10">
+                    {profile.isGoogleAuth ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          logoutGoogle();
+                          setProfileOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign out of Google
+                      </button>
+                    ) : (
+                      <div className="px-2 py-1">
+                        <GoogleSignInButton
+                          variant="compact"
+                          className="w-full justify-center"
+                          onSuccess={() => setProfileOpen(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

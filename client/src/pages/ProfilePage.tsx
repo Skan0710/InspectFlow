@@ -20,6 +20,7 @@ import { Badge } from '../components/ui/Badge';
 import { fetchDatasetStatus } from '../api/client';
 import type { DatasetStatus } from '../types/analytics';
 import { ACCENTS, DEFAULT_PROFILE, getInitials, resetProfile, saveProfile, useProfile, type AccentKey, type UserProfile } from '../lib/profile';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -52,6 +53,10 @@ export const ProfilePage: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    setForm(stored);
+  }, [stored]);
 
   const emailError = form.email.trim() && !EMAIL_PATTERN.test(form.email.trim()) ? 'Enter a valid email address' : undefined;
   const dirty = JSON.stringify(form) !== JSON.stringify(stored);
@@ -89,11 +94,27 @@ export const ProfilePage: React.FC = () => {
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-950 via-indigo-800 to-indigo-600 p-6 text-white sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-violet-400/25 blur-3xl" />
         <div className="relative flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-          <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br ${ACCENTS[stored.accent]} text-2xl font-extrabold text-indigo-950! shadow-xl shadow-indigo-950/40`}>
-            {getInitials(stored.name)}
-          </span>
+          {stored.avatarUrl ? (
+            <img
+              src={stored.avatarUrl}
+              alt={stored.name}
+              className="h-20 w-20 shrink-0 rounded-2xl border border-white/30 object-cover shadow-xl shadow-indigo-950/40"
+            />
+          ) : (
+            <span className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-gradient-to-br ${ACCENTS[stored.accent]} text-2xl font-extrabold text-indigo-950! shadow-xl shadow-indigo-950/40`}>
+              {getInitials(stored.name)}
+            </span>
+          )}
           <div className="min-w-0 space-y-1.5">
-            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{stored.name}</h1>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{stored.name}</h1>
+              {stored.isGoogleAuth && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-300 border border-emerald-500/40">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Google Verified
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-indigo-100">
               {stored.role && (
                 <span className="inline-flex items-center gap-1.5">
@@ -223,8 +244,30 @@ export const ProfilePage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Workspace snapshot */}
+        {/* Workspace snapshot & integrations */}
         <div className="space-y-6">
+          {/* Google OAuth Card */}
+          <Card className="border-indigo-100 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50/50 to-white">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Google Identity</CardTitle>
+                {stored.isGoogleAuth ? (
+                  <Badge variant="success" size="sm">Connected</Badge>
+                ) : (
+                  <Badge variant="neutral" size="sm">Unlinked</Badge>
+                )}
+              </div>
+              <CardDescription className="text-xs">
+                {stored.isGoogleAuth
+                  ? 'Authenticated via Google OAuth 2.0 Single Sign-On.'
+                  : 'Sign in with your Google Account for fast, secure profile sync.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <GoogleSignInButton variant="card" />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Workspace snapshot</CardTitle>

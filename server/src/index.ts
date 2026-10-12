@@ -16,6 +16,7 @@ import issueRoutes from './routes/issues.js';
 import adaptionRoutes from './routes/adaption.js';
 import reportRoutes from './routes/reports.js';
 import chatRoutes from './routes/chat.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -159,6 +160,9 @@ app.use('/api/reports', reportRoutes);
 
 // Grounded AI Copilot Chat Route
 app.use('/api/chat', chatRoutes);
+
+// Google OAuth Authentication Route
+app.use('/api/auth', authRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
