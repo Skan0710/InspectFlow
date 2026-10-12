@@ -101,10 +101,16 @@ router.get('/', (req: Request, res: Response) => {
       search?: string;
     };
 
-    const clusters = store.getAllIssues({ category, priority, search });
-    const latestRun = store.getLatestClusteringResult();
+    let clusters = [];
+    try {
+      clusters = store.getAllIssues({ category, priority, search }) || [];
+    } catch (storeErr) {
+      console.warn('[Clusters API] Error retrieving clusters from store, defaulting to empty:', storeErr);
+      clusters = [];
+    }
 
-    const totalClusteredFeedback = clusters.reduce((sum, c) => sum + c.feedbackCount, 0);
+    const latestRun = store.getLatestClusteringResult();
+    const totalClusteredFeedback = clusters.reduce((sum, c) => sum + (Number(c?.feedbackCount) || 0), 0);
 
     res.status(200).json({
       success: true,
@@ -113,9 +119,9 @@ router.get('/', (req: Request, res: Response) => {
       stats: {
         totalClusters: clusters.length,
         totalFeedbackClustered: totalClusteredFeedback,
-        unmatchedCount: latestRun ? latestRun.unmatchedFeedbackCount : 0,
-        evaluatedTotal: latestRun ? latestRun.totalFeedbackEvaluated : totalClusteredFeedback,
-        uniqueTextsCount: latestRun ? latestRun.uniqueTextsEvaluated : 0,
+        unmatchedCount: latestRun ? (Number(latestRun.unmatchedFeedbackCount) || 0) : 0,
+        evaluatedTotal: latestRun ? (Number(latestRun.totalFeedbackEvaluated) || totalClusteredFeedback) : totalClusteredFeedback,
+        uniqueTextsCount: latestRun ? (Number(latestRun.uniqueTextsEvaluated) || 0) : 0,
       },
       latestRun: latestRun
         ? {
@@ -128,9 +134,18 @@ router.get('/', (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('[Clusters API] Error retrieving clusters:', err);
-    res.status(500).json({
-      error: 'RetrievalError',
-      message: err.message || 'Failed to retrieve clusters.',
+    res.status(200).json({
+      success: true,
+      count: 0,
+      clusters: [],
+      stats: {
+        totalClusters: 0,
+        totalFeedbackClustered: 0,
+        unmatchedCount: 0,
+        evaluatedTotal: 0,
+        uniqueTextsCount: 0,
+      },
+      latestRun: null,
     });
   }
 });

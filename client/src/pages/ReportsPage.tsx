@@ -143,26 +143,26 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
               <span>Executive</span>
-              <span className="text-indigo-600">Reports</span>
+              <span className="text-indigo-400">Reports</span>
             </h2>
-            <Badge variant="indigo" size="md" className="font-mono text-xs font-bold">
+            <Badge variant="indigo" size="md" className="font-mono text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
               <StatsCounter value={reports.length} /> Reports
             </Badge>
           </div>
-          <p className="text-base text-slate-500 mt-1">
+          <p className="text-base text-indigo-200/80 mt-1">
             Export synthesized intelligence summaries, recurring digests, and compliance reports.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <Button
             variant="outline"
             size="md"
             onClick={loadReports}
             isLoading={isLoading}
             leftIcon={<RotateCw className="h-4 w-4" />}
-            className="font-medium text-sm"
+            className="font-semibold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/35 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Refresh
           </Button>
@@ -170,8 +170,8 @@ export const ReportsPage: React.FC = () => {
             variant="primary"
             size="md"
             onClick={() => setIsCreateModalOpen(true)}
-            leftIcon={<Plus className="h-5 w-5" />}
-            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
+            leftIcon={<Plus className="h-4 w-4" />}
+            className="cta-focus-glow font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/40 border border-indigo-400/40 px-5 active:scale-95 transition-all"
           >
             Generate Custom Report
           </Button>

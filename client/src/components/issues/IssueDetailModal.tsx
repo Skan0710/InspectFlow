@@ -448,11 +448,11 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Deterministic Priority Score Formula Breakdown */}
+                  {/* Deterministic Priority Score Breakdown */}
                   {detail.scoreBreakdown && (
                     <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 text-xs space-y-2.5">
                       <div className="flex items-center justify-between font-bold text-slate-900">
-                        <span>Priority Formula Breakdown</span>
+                        <span>Priority Score Breakdown</span>
                         <span className="font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                           {detail.scoreBreakdown.score} pts
                         </span>

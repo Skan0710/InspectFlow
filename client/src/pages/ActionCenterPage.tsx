@@ -190,11 +190,11 @@ export const ActionCenterPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
             <span>Action</span>
-            <span className="text-indigo-600">Center</span>
+            <span className="text-indigo-400">Center</span>
           </h2>
-          <p className="text-base text-slate-500 mt-1">
+          <p className="text-base text-indigo-200/80 mt-1">
             Track triage status, assign action items, and manage customer issue lifecycles.
           </p>
         </div>
@@ -205,7 +205,7 @@ export const ActionCenterPage: React.FC = () => {
             leftIcon={<RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />}
             onClick={fetchIssues}
             disabled={isLoading}
-            className="font-medium text-sm"
+            className="font-semibold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/35 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Refresh Queue
           </Button>
@@ -213,7 +213,7 @@ export const ActionCenterPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs & Status Overview */}
-      <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-2.5 border-b border-white/10 pb-3 overflow-x-auto">
         {[
           { label: 'Open Issues', value: 'open', count: statusSummary.open },
           { label: 'In Progress', value: 'in_progress', count: statusSummary.in_progress },
@@ -227,16 +227,16 @@ export const ActionCenterPage: React.FC = () => {
             onClick={() => setStatusFilter(tab.value)}
             className={`flex items-center gap-2.5 rounded-xl px-4 py-2 text-sm font-bold transition-all shrink-0 cursor-pointer ${
               statusFilter === tab.value
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/35 border border-indigo-400/40'
+                : 'bg-white/10 text-indigo-200 hover:bg-white/20 hover:text-white border border-white/15'
             }`}
           >
             <span>{tab.label}</span>
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-mono font-bold ${
                 statusFilter === tab.value
-                  ? 'bg-white/20 text-white'
-                  : 'bg-slate-200 text-slate-700'
+                  ? 'bg-white/25 text-white'
+                  : 'bg-white/10 text-indigo-300'
               }`}
             >
               <StatsCounter value={tab.count} />
@@ -246,14 +246,15 @@ export const ActionCenterPage: React.FC = () => {
       </div>
 
       {/* Control Bar: Search & Priority Filter */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-white/20 bg-indigo-950/60 backdrop-blur-xl p-3.5 shadow-xl text-white">
         <div className="w-full sm:w-72">
           <Input
             type="text"
             placeholder="Search issues"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<Search className="h-4 w-4 text-slate-400" />}
+            leftIcon={<Search className="h-4 w-4 text-indigo-300" />}
+            className="h-10 text-sm bg-white/10 border-white/25 text-white placeholder:text-indigo-200/60"
           />
         </div>
 
@@ -262,6 +263,7 @@ export const ActionCenterPage: React.FC = () => {
             <Select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
+              className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
             >
               <option value="all">All Priorities</option>
               <option value="critical">Critical</option>
@@ -270,10 +272,11 @@ export const ActionCenterPage: React.FC = () => {
               <option value="low">Low</option>
             </Select>
           </div>
-          <div className="w-44">
+          <div className="w-48">
             <Select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
+              className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
             >
               <option value="priorityScore">Highest Priority Score</option>
               <option value="feedbackCount">Highest Mentions</option>
@@ -286,12 +289,12 @@ export const ActionCenterPage: React.FC = () => {
 
       {/* Error Banner */}
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 flex items-center justify-between">
+        <div className="rounded-xl border border-rose-400/40 bg-rose-950/60 p-4 text-xs text-rose-200 flex items-center justify-between backdrop-blur-md">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchIssues}>
+          <Button variant="outline" size="sm" onClick={fetchIssues} className="bg-white/10 text-white border-white/20">
             Retry
           </Button>
         </div>
@@ -300,14 +303,14 @@ export const ActionCenterPage: React.FC = () => {
       {/* Issues Queue List */}
       {isLoading ? (
         <div className="py-20 text-center">
-          <RotateCw className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
-          <p className="text-sm font-medium text-slate-600 mt-3">Loading prioritized issues queue...</p>
+          <RotateCw className="h-8 w-8 animate-spin text-indigo-400 mx-auto" />
+          <p className="text-sm font-medium text-indigo-200 mt-3">Loading prioritized issues queue...</p>
         </div>
       ) : issues.length === 0 ? (
-        <div className="rounded-xl p-12 text-center bg-slate-50/50">
-          <Layers className="h-10 w-10 text-indigo-500 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-900">No Issues Match Current Filters</h3>
-          <p className="text-xs text-slate-600 max-w-md mx-auto mt-1">
+        <div className="rounded-2xl p-12 text-center bg-indigo-950/40 border border-white/15">
+          <Layers className="h-10 w-10 text-indigo-400 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-white">No Issues Match Current Filters</h3>
+          <p className="text-sm text-indigo-200/80 max-w-md mx-auto mt-1">
             {statusFilter === 'resolved'
               ? 'No resolved issues found. Triage active items to track resolutions.'
               : statusFilter === 'saved'
@@ -335,17 +338,17 @@ export const ActionCenterPage: React.FC = () => {
             const recommendation = issue.metadata?.recommendation;
 
             return (
-              <Card key={issue.id} className="transition-all hover:border-slate-300">
+              <Card key={issue.id} className="transition-all rounded-2xl border border-white/20 bg-indigo-950/60 backdrop-blur-xl hover:border-indigo-400/50 shadow-lg text-white">
                 <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-3">
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={getPriorityBadgeVariant(issue.priority)} size="sm" dot>
                         {issue.priority.toUpperCase()}
                       </Badge>
-                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/35">
                         {priorityScore} / 100 pts
                       </span>
-                      <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                      <span className="font-mono text-xs font-bold text-indigo-200 bg-white/10 border border-white/15 px-2 py-0.5 rounded">
                         {issue.issueCode}
                       </span>
                       <Badge variant="neutral" size="sm">
@@ -355,54 +358,54 @@ export const ActionCenterPage: React.FC = () => {
                         onClick={() => handleToggleSaved(issue.id)}
                         className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded transition-colors cursor-pointer ${
                           isSaved
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            : 'bg-white/10 text-indigo-200 hover:bg-white/20 hover:text-white border border-white/15'
                         }`}
                         title={isSaved ? 'Remove from saved' : 'Save / Bookmark issue'}
                       >
-                        <Star className={`h-3 w-3 ${isSaved ? 'fill-amber-500 text-amber-600' : 'text-slate-400'}`} />
+                        <Star className={`h-3 w-3 ${isSaved ? 'fill-amber-400 text-amber-400' : 'text-indigo-300'}`} />
                         <span>{isSaved ? 'Saved' : 'Save'}</span>
                       </button>
                     </div>
 
-                    <CardTitle className="text-base font-bold text-slate-900 mt-1">
+                    <CardTitle className="text-base sm:text-lg font-bold text-white mt-1">
                       {issue.title}
                     </CardTitle>
-                    <p className="text-xs text-slate-600 line-clamp-2">
+                    <p className="text-xs sm:text-sm text-indigo-100/80 line-clamp-2 leading-relaxed">
                       {issue.description}
                     </p>
                   </div>
 
                   {/* Frequency & Sentiment Metrics */}
                   <div className="flex sm:flex-col items-end gap-1.5 shrink-0 text-right">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                      <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">
+                      <Layers className="h-3.5 w-3.5 text-indigo-400" />
                       <span>{issue.feedbackCount} mentions</span>
                     </div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-indigo-200/80">
                       {issue.uniqueTextCount} unique inquiries ({Math.round(duplicateRatio * 100)}% dupes)
                     </div>
-                    <div className="text-[11px] font-semibold text-rose-600">
+                    <div className="text-[11px] font-semibold text-rose-400">
                       {Math.round(negativeSentimentRatio * 100)}% negative sentiment
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="pt-0 pb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2.5 border-t border-white/10">
                     {/* Status Switcher Buttons */}
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold uppercase text-slate-400">Status:</span>
+                      <span className="text-[11px] font-bold uppercase text-indigo-300">Status:</span>
                       {(['open', 'in_progress', 'resolved', 'dismissed'] as IssueStatus[]).map((st) => {
                         const isActive = (issue.status || 'open').toLowerCase() === st;
                         return (
                           <button
                             key={st}
                             onClick={() => handleStatusChangeClick(issue, st)}
-                            className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                               isActive
-                                ? 'bg-slate-900 text-white font-bold'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/35 border border-indigo-400/40'
+                                : 'bg-white/10 text-indigo-200 hover:bg-white/20 hover:text-white border border-white/15'
                             }`}
                           >
                             {st === 'open' && 'Open'}
@@ -416,21 +419,21 @@ export const ActionCenterPage: React.FC = () => {
 
                     {/* Owner / Assignee pill */}
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold uppercase text-slate-400">Owner:</span>
+                      <span className="text-[11px] font-bold uppercase text-indigo-300">Owner:</span>
                       {editingAssigneeId === issue.id ? (
                         <div className="flex items-center gap-1">
                           <input
                             type="text"
                             value={assigneeText}
                             onChange={(e) => setAssigneeText(e.target.value)}
-                            className="h-6 text-xs px-1.5 rounded border border-slate-300"
+                            className="h-7 text-xs px-2 rounded-lg bg-indigo-950 border border-white/30 text-white"
                             placeholder="Name or team..."
                             autoFocus
                           />
-                          <Button size="sm" variant="primary" className="h-6 px-1.5 text-[10px]" onClick={() => handleSaveAssignee(issue.id)}>
+                          <Button size="sm" variant="primary" className="h-7 px-2 text-xs font-semibold" onClick={() => handleSaveAssignee(issue.id)}>
                             Save
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-[10px]" onClick={() => setEditingAssigneeId(null)}>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs font-semibold" onClick={() => setEditingAssigneeId(null)}>
                             Cancel
                           </Button>
                         </div>
@@ -440,10 +443,10 @@ export const ActionCenterPage: React.FC = () => {
                             setEditingAssigneeId(issue.id);
                             setAssigneeText(issue.assignee || '');
                           }}
-                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium cursor-pointer"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-indigo-100 border border-white/15 text-xs font-medium cursor-pointer transition-colors"
                           title="Click to change assignee"
                         >
-                          <User className="h-3 w-3 text-slate-400" />
+                          <User className="h-3 w-3 text-indigo-300" />
                           <span>{issue.assignee || 'Unassigned'}</span>
                         </button>
                       )}
@@ -451,17 +454,17 @@ export const ActionCenterPage: React.FC = () => {
                   </div>
                 </CardContent>
 
-                <CardFooter className="py-2.5 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex flex-wrap items-center gap-3 text-slate-400 text-[11px]">
+                <CardFooter className="py-2.5 bg-black/20 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs rounded-b-2xl">
+                  <div className="flex flex-wrap items-center gap-3 text-indigo-200/80 text-[11px]">
                     <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3 w-3 text-indigo-300" />
                       <span>Updated: {new Date(issue.statusUpdatedAt || issue.updatedAt).toLocaleDateString()}</span>
                     </div>
                     {issue.notes && issue.notes.length > 0 && (
                       <span>• {issue.notes.length} internal notes</span>
                     )}
                     {recommendation && (
-                      <span className="text-indigo-600 font-semibold">• AI Recommendation Available</span>
+                      <span className="text-indigo-300 font-semibold">• AI Recommendation Available</span>
                     )}
                   </div>
 
@@ -470,8 +473,8 @@ export const ActionCenterPage: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-xs font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                        leftIcon={<Sparkles className="h-3 w-3" />}
+                        className="h-8 text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/30"
+                        leftIcon={<Sparkles className="h-3.5 w-3.5 text-indigo-300" />}
                         onClick={() => setSelectedRecommendation(recommendation)}
                       >
                         AI Recs
@@ -480,7 +483,7 @@ export const ActionCenterPage: React.FC = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      className="h-7 text-xs"
+                      className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/35 border border-indigo-400/40"
                       rightIcon={<ChevronRight className="h-3.5 w-3.5" />}
                       onClick={() => setSelectedIssueId(issue.id)}
                     >

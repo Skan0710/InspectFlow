@@ -283,24 +283,25 @@ export const FeedbackPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-3 page-header">
         <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
-            Customer Feedback
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            <span>Customer</span>
+            <span className="text-indigo-400">Feedback</span>
           </h2>
-          <p className="text-base text-slate-500 mt-1">
+          <p className="text-base text-indigo-200/80 mt-1">
             Browse, filter, and inspect incoming sentiment and customer feedback streams.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <Button
             variant="outline"
             size="md"
             onClick={handleSeedSample}
             isLoading={isSeedingSample}
-            leftIcon={<FlaskConical className="h-4 w-4 text-amber-600" />}
+            leftIcon={<FlaskConical className="h-4 w-4 text-amber-300" />}
             title="Load small 20-row sample dataset for rapid local testing"
-            className="font-medium text-sm"
+            className="font-semibold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/35 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Load 20 Demo Rows
           </Button>
@@ -311,7 +312,7 @@ export const FeedbackPage: React.FC = () => {
             onClick={fetchFeedback}
             isLoading={isLoading}
             leftIcon={<RefreshCw className="h-4 w-4" />}
-            className="font-medium text-sm"
+            className="font-semibold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/35 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Refresh Feed
           </Button>
@@ -322,7 +323,7 @@ export const FeedbackPage: React.FC = () => {
             onClick={handleExportCsv}
             leftIcon={<Download className="h-4 w-4" />}
             title="Export filtered feedback records as CSV"
-            className="font-medium text-sm"
+            className="font-semibold text-sm bg-white/15 hover:bg-white/25 text-white border border-white/35 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Export CSV
           </Button>
@@ -331,8 +332,8 @@ export const FeedbackPage: React.FC = () => {
             variant="outline"
             size="md"
             onClick={() => setIsManualModalOpen(true)}
-            leftIcon={<MessageSquarePlus className="h-4 w-4 text-indigo-600" />}
-            className="font-semibold text-sm"
+            leftIcon={<MessageSquarePlus className="h-4 w-4 text-indigo-300" />}
+            className="font-semibold text-sm bg-white/20 hover:bg-white/30 text-white border border-white/40 backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             Submit Feedback
           </Button>
@@ -342,7 +343,7 @@ export const FeedbackPage: React.FC = () => {
             size="md"
             onClick={() => setIsImportModalOpen(true)}
             leftIcon={<Upload className="h-5 w-5" />}
-            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
+            className="cta-focus-glow font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/40 border border-indigo-400/40 px-5 active:scale-95 transition-all"
           >
             Ingest Feedback CSV
           </Button>
@@ -417,10 +418,11 @@ export const FeedbackPage: React.FC = () => {
       <AnalysisProgressCard onAnalysisComplete={fetchFeedback} />
 
       {/* Multi-Dimensional Filter Toolbar */}
-      <Card className="p-4 bg-white space-y-3">
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
-          {/* Search Input */}
-          <div className="sm:col-span-2">
+      <div className="rounded-2xl border border-white/20 bg-indigo-950/60 backdrop-blur-xl p-4 sm:p-5 shadow-xl text-white space-y-4">
+        {/* Row 1: Search & Core Filters in a balanced 6-column grid */}
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {/* Search Input (spans 2 columns on xl screens) */}
+          <div className="sm:col-span-2 xl:col-span-2">
             <Input
               placeholder="Search verbatim review text or keywords..."
               value={search}
@@ -428,7 +430,8 @@ export const FeedbackPage: React.FC = () => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              leftIcon={<Search className="h-4 w-4 text-slate-400" />}
+              leftIcon={<Search className="h-4 w-4 text-indigo-300" />}
+              className="h-10 text-sm bg-white/10 border-white/25 text-white placeholder:text-indigo-200/60"
             />
           </div>
 
@@ -439,6 +442,7 @@ export const FeedbackPage: React.FC = () => {
               setCategoryFilter(e.target.value);
               setPage(1);
             }}
+            className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
           >
             <option value="all">All Categories</option>
             <option value="Product Feedback">Product Feedback</option>
@@ -454,6 +458,7 @@ export const FeedbackPage: React.FC = () => {
               setSentimentFilter(e.target.value);
               setPage(1);
             }}
+            className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
           >
             <option value="all">All Sentiments</option>
             <option value="positive">Positive</option>
@@ -469,6 +474,7 @@ export const FeedbackPage: React.FC = () => {
               setSeverityFilter(e.target.value);
               setPage(1);
             }}
+            className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
           >
             <option value="all">All Severities</option>
             <option value="5">Sev 5 - Critical</option>
@@ -485,6 +491,7 @@ export const FeedbackPage: React.FC = () => {
               setAnalysisStatusFilter(e.target.value);
               setPage(1);
             }}
+            className="h-10 text-sm bg-white/10 border-white/25 text-white font-medium"
           >
             <option value="all">All Statuses</option>
             <option value="analyzed">Analyzed Only</option>
@@ -492,23 +499,23 @@ export const FeedbackPage: React.FC = () => {
           </Select>
         </div>
 
-        {/* Secondary Filter & Active Filter Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Row 2: Origin Source, Active Filters, and Row Count controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10 text-xs text-indigo-200">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* Provenance Filter */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span>Origin:</span>
+            <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-white">
+              <span className="text-indigo-300 font-semibold">Origin:</span>
               <select
                 value={datasetTypeFilter}
                 onChange={(e) => {
                   setDatasetTypeFilter(e.target.value);
                   setPage(1);
                 }}
-                className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
               >
-                <option value="all">All Sources</option>
-                <option value="genuine_import">Genuine CSV Only</option>
-                <option value="demo_sample">Demo Sample Only</option>
+                <option value="all" className="bg-indigo-950 text-white">All Sources</option>
+                <option value="genuine_import" className="bg-indigo-950 text-white">Genuine CSV Only</option>
+                <option value="demo_sample" className="bg-indigo-950 text-white">Demo Sample Only</option>
               </select>
             </div>
 
@@ -519,7 +526,7 @@ export const FeedbackPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setTopicFilter('')}
-                  className="ml-1 hover:text-indigo-900"
+                  className="ml-1 hover:text-white"
                 >
                   <X className="h-3 w-3 inline" />
                 </button>
@@ -533,7 +540,7 @@ export const FeedbackPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCategoryFilter('all')}
-                  className="ml-1 hover:text-slate-900"
+                  className="ml-1 hover:text-white"
                 >
                   <X className="h-3 w-3 inline" />
                 </button>
@@ -547,7 +554,7 @@ export const FeedbackPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSentimentFilter('all')}
-                  className="ml-1 hover:text-amber-900"
+                  className="ml-1 hover:text-white"
                 >
                   <X className="h-3 w-3 inline" />
                 </button>
@@ -561,7 +568,7 @@ export const FeedbackPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSeverityFilter('all')}
-                  className="ml-1 hover:text-rose-900"
+                  className="ml-1 hover:text-white"
                 >
                   <X className="h-3 w-3 inline" />
                 </button>
@@ -573,31 +580,36 @@ export const FeedbackPage: React.FC = () => {
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold underline ml-1"
+                className="text-xs text-indigo-300 hover:text-white font-semibold underline ml-1 cursor-pointer transition-colors"
               >
                 Reset filters
               </button>
             )}
           </div>
 
-          {/* Page Size Selector */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span>Show:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700"
-            >
-              <option value="15">15 rows</option>
-              <option value="25">25 rows</option>
-              <option value="50">50 rows</option>
-            </select>
+          {/* Right side: Row count and Page Size Selector */}
+          <div className="flex items-center gap-3">
+            <span className="text-indigo-200 font-medium">
+              Total: <strong className="text-white">{totalCount.toLocaleString()}</strong> rows
+            </span>
+            <div className="flex items-center gap-1.5 bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-white">
+              <span className="text-indigo-300 font-semibold">Show:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="15" className="bg-indigo-950 text-white">15 rows</option>
+                <option value="25" className="bg-indigo-950 text-white">25 rows</option>
+                <option value="50" className="bg-indigo-950 text-white">50 rows</option>
+              </select>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Main Feedback Content Area */}
       {totalCount === 0 && !isLoading ? (

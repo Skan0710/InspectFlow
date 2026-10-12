@@ -17,9 +17,9 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary:
     'bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-400 hover:via-indigo-500 hover:to-purple-500 active:from-indigo-700 active:to-purple-700 border border-indigo-300/40 shadow-xl shadow-indigo-950/50 hover:shadow-indigo-500/35 hover:ring-2 hover:ring-indigo-300/50 transition-all cursor-pointer',
   secondary:
-    'bg-indigo-950 text-white font-semibold hover:bg-indigo-900 active:bg-black border border-white/20 shadow-lg shadow-black/30 cursor-pointer',
+    'bg-indigo-900/80 text-white font-semibold hover:bg-indigo-800/90 active:bg-indigo-950 border border-white/25 shadow-lg shadow-black/30 cursor-pointer',
   outline:
-    'bg-white/15 text-white font-medium border border-white/30 hover:bg-white/25 active:bg-white/30 backdrop-blur-md shadow-md shadow-indigo-950/30 cursor-pointer',
+    'bg-white/20 text-white font-semibold border border-white/40 hover:bg-white/30 active:bg-white/35 backdrop-blur-md shadow-md shadow-black/25 ring-1 ring-white/25 transition-all cursor-pointer',
   ghost:
     'bg-transparent text-white font-medium hover:bg-white/15 active:bg-white/20 border border-transparent cursor-pointer',
   danger:

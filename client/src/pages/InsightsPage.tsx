@@ -408,11 +408,11 @@ export const InsightsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white flex items-center gap-2">
             <span>AI</span>
-            <span className="text-indigo-600">Insights & Recommendations</span>
-          </h2>
-          <p className="text-base text-slate-500 mt-1">
+            <span className="text-indigo-400">Insights & Recommendations</span>
+          </h1>
+          <p className="text-base sm:text-lg text-indigo-100/90 font-normal mt-1.5">
             Semantic issue clustering, deterministic triage rankings, and AI-driven solutions.
           </p>
         </div>
@@ -423,7 +423,7 @@ export const InsightsPage: React.FC = () => {
             leftIcon={<Calculator className={`h-4 w-4 ${isRecalculating ? 'animate-spin' : ''}`} />}
             onClick={handleRecalculateScores}
             disabled={isRecalculating || isClustering}
-            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap"
+            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap bg-white/20 border-white/35 text-white hover:bg-white/30 shadow-md"
           >
             {isRecalculating ? 'Recalculating...' : 'Recalculate Scores'}
           </Button>
@@ -433,7 +433,7 @@ export const InsightsPage: React.FC = () => {
             leftIcon={<RotateCw className={`h-4 w-4 ${isClustering ? 'animate-spin' : ''}`} />}
             onClick={handleRunClustering}
             disabled={isClustering || isRecalculating}
-            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap"
+            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap bg-white/20 border-white/35 text-white hover:bg-white/30 shadow-md"
           >
             {isClustering ? 'Clustering...' : 'Re-run Clustering'}
           </Button>
@@ -443,7 +443,7 @@ export const InsightsPage: React.FC = () => {
             leftIcon={<Sparkles className={`h-4 w-4 ${isBatchGenerating ? 'animate-spin' : ''}`} />}
             onClick={handleGenerateAllHighPriority}
             disabled={isBatchGenerating || isClustering || isRecalculating}
-            className="cta-focus-glow font-bold text-sm h-10 px-4 whitespace-nowrap shadow-lg shadow-indigo-500/25"
+            className="cta-focus-glow font-bold text-sm h-10 px-4 whitespace-nowrap shadow-lg shadow-indigo-500/35 ring-1 ring-white/30"
           >
             {isBatchGenerating ? 'Generating...' : 'Generate Recommendations'}
           </Button>
@@ -505,27 +505,29 @@ export const InsightsPage: React.FC = () => {
       )}
 
       {/* Control Bar: Filters & Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <Calculator className="h-4 w-4 text-indigo-600 shrink-0" />
-          <span>Priority Model: <strong>Priority = 100 × (0.40 × F + 0.35 × S + 0.25 × N)</strong></span>
+      {/* Control Bar: Filters & Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-white/20 bg-indigo-950/60 backdrop-blur-md p-3.5 shadow-xl text-white">
+        <div className="flex items-center gap-2 text-sm font-bold text-white">
+          <Layers className="h-4 w-4 text-indigo-400 shrink-0" />
+          <span>Topic Clusters & Triage Queue</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
-          <div className="w-full sm:w-56">
+          <div className="w-full sm:w-60">
             <Input 
               type="text" 
               placeholder="Search cluster topics..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              leftIcon={<Search className="h-4 w-4 text-slate-400" />}
+              leftIcon={<Search className="h-4 w-4 text-indigo-300" />}
+              className="h-10 text-sm bg-white/10 border-white/25 text-white placeholder:text-indigo-200/60"
             />
           </div>
           <div className="w-auto min-w-[155px]">
             <Select 
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="text-sm font-medium"
+              className="h-10 text-sm font-medium bg-white/10 border-white/25 text-white"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -538,7 +540,7 @@ export const InsightsPage: React.FC = () => {
             <Select 
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="text-sm font-medium"
+              className="h-10 text-sm font-medium bg-white/10 border-white/25 text-white"
             >
               <option value="all">All Priority</option>
               <option value="critical">Critical</option>
@@ -692,18 +694,17 @@ export const InsightsPage: React.FC = () => {
 
                 <CardContent className="space-y-3 pt-1">
                   {/* Score Breakdown Section Toggle */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 text-xs">
+                  <div className="rounded-xl border border-white/15 bg-white/10 p-3 text-xs text-white">
                     <div 
                       className="flex items-center justify-between cursor-pointer select-none"
                       onClick={() => toggleExpandScore(cluster.id)}
                     >
-                      <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                        <Calculator className="h-3.5 w-3.5 text-indigo-600" />
+                      <div className="flex items-center gap-1.5 font-medium text-white">
+                        <Calculator className="h-3.5 w-3.5 text-indigo-400" />
                         <span>Score Breakdown: <strong>{priorityScore !== null ? `${priorityScore} pts` : 'Calculated on demand'}</strong></span>
-                        <span className="text-slate-400 text-[11px]">(Formula: 100 × [0.40×F + 0.35×S + 0.25×N])</span>
                       </div>
-                      <span className="text-indigo-600 font-semibold inline-flex items-center gap-1">
-                        {isScoreExpanded ? <>Hide Details <ChevronUp className="h-3 w-3" /></> : <>Inspect Formula <ChevronDown className="h-3 w-3" /></>}
+                      <span className="text-indigo-300 font-semibold inline-flex items-center gap-1">
+                        {isScoreExpanded ? <>Hide Details <ChevronUp className="h-3 w-3" /></> : <>Inspect Breakdown <ChevronDown className="h-3 w-3" /></>}
                       </span>
                     </div>
 

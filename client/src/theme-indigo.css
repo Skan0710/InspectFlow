@@ -2,10 +2,44 @@
    Unlayered on purpose: it must win over Tailwind's layered utilities inside `.app-theme`. */
 .app-theme { color-scheme: dark; color: #f1f3ff; }
 .app-theme [class~="bg-white"] { background-color: rgba(30, 27, 85, 0.5) }
-.app-theme [class^="bg-white/"], .app-theme [class*=" bg-white/"] { background-color: rgba(30, 27, 85, 0.5) }
-.app-theme [class~="hover:bg-white"]:hover { background-color: rgba(30, 27, 85, 0.5) }
-.app-theme [class~="focus:bg-white"]:focus { background-color: rgba(30, 27, 85, 0.5) }
-.app-theme .group:hover [class~="group-hover:bg-white"] { background-color: rgba(30, 27, 85, 0.5) }
+.app-theme [class~="hover:bg-white"]:hover { background-color: rgba(30, 27, 85, 0.6) }
+.app-theme [class~="focus:bg-white"]:focus { background-color: rgba(30, 27, 85, 0.6) }
+.app-theme .group:hover [class~="group-hover:bg-white"] { background-color: rgba(30, 27, 85, 0.6) }
+
+/* High-contrast, bright glass styling for outline & secondary buttons and dark-mode text legibility */
+.app-theme [class~="text-slate-900"],
+.app-theme [class~="text-slate-800"],
+.app-theme [class~="text-gray-900"],
+.app-theme [class~="text-gray-800"] {
+  color: #ffffff !important;
+}
+.app-theme [class~="text-slate-700"],
+.app-theme [class~="text-slate-600"],
+.app-theme [class~="text-gray-700"],
+.app-theme [class~="text-gray-600"] {
+  color: #e0e7ff !important;
+}
+.app-theme [class~="text-slate-500"],
+.app-theme [class~="text-gray-500"] {
+  color: #c7d2fe !important;
+}
+.app-theme [class~="text-slate-400"],
+.app-theme [class~="text-gray-400"] {
+  color: #a5b4fc !important;
+}
+
+/* Explicit button visibility across all themes and pages */
+.app-theme button[class*="border-white"],
+.app-theme button[class*="border-slate"],
+.app-theme button[class*="bg-white/"],
+.app-theme [class*="bg-white/10"],
+.app-theme [class*="bg-white/15"],
+.app-theme [class*="bg-white/20"] {
+  color: #ffffff !important;
+}
+.app-theme button {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
 .app-theme [class~="bg-slate-50"] { background-color: rgba(255,255,255,0.05) }
 .app-theme [class^="bg-slate-50/"], .app-theme [class*=" bg-slate-50/"] { background-color: rgba(255,255,255,0.05) }
 .app-theme [class~="hover:bg-slate-50"]:hover { background-color: rgba(255,255,255,0.05) }
