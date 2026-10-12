@@ -8,9 +8,11 @@ import {
   Award,
   Download,
   X,
-  Code2,
   Database,
   Sparkles,
+  DollarSign,
+  ShieldCheck,
+  Layers,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -21,6 +23,9 @@ import { StatsCounter } from '../components/ui/stats-counter';
 import type {
   AdaptionRunRecord,
   AdaptionProviderStatus,
+  AdaptionEstimate,
+  AdaptionEvaluationComparison,
+  ExemplarLibraryMetadata,
 } from '../types/adaption';
 
 export const AdaptionPage: React.FC = () => {
@@ -30,13 +35,29 @@ export const AdaptionPage: React.FC = () => {
   const [selectedRun, setSelectedRun] = useState<AdaptionRunRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'comparison' | 'rawJson' | 'exemplars'>('comparison');
+  const [activeTab, setActiveTab] = useState<'comparison' | 'rawJson' | 'exemplars' | 'evaluation'>('comparison');
+
+  // Prepared dataset & estimation state
+  const [preparedData, setPreparedData] = useState<any | null>(null);
+  const [isPreparing, setIsPreparing] = useState<boolean>(false);
+  const [estimateData, setEstimateData] = useState<AdaptionEstimate | null>(null);
+  const [isEstimating, setIsEstimating] = useState<boolean>(false);
+
+  // Evaluation comparison state
+  const [evaluation, setEvaluation] = useState<AdaptionEvaluationComparison | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
+
+  // Exemplar library state
+  const [exemplarMetadata, setExemplarMetadata] = useState<ExemplarLibraryMetadata | null>(null);
+  const [isTogglingExemplars, setIsTogglingExemplars] = useState<boolean>(false);
 
   // Trigger form state
   const [datasetName, setDatasetName] = useState<string>('');
   const [datasetOrigin, setDatasetOrigin] = useState<'all' | 'genuine_import' | 'demo_sample'>('all');
   const [maxRows, setMaxRows] = useState<number>(20);
   const [simulateRun, setSimulateRun] = useState<boolean>(true);
+  const [confirmLiveExecution, setConfirmLiveExecution] = useState<boolean>(false);
+  const [runError, setRunError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -61,7 +82,6 @@ export const AdaptionPage: React.FC = () => {
         const json = await res.json();
         setRuns(json.data || []);
         if (json.data && json.data.length > 0) {
-          // Functional update keeps fetchRuns stable instead of re-fetching on every selection
           setSelectedRun((current) => current ?? json.data[0]);
         }
       }
@@ -72,12 +92,123 @@ export const AdaptionPage: React.FC = () => {
     }
   }, []);
 
-  const [runError, setRunError] = useState<string | null>(null);
+  const fetchExemplarMetadata = useCallback(async () => {
+    try {
+      const res = await fetch('/api/adaption/exemplars/metadata');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setExemplarMetadata(json.data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch exemplar metadata:', err);
+    }
+  }, []);
+
+  const fetchEvaluation = useCallback(async () => {
+    try {
+      const res = await fetch('/api/adaption/evaluation');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setEvaluation(json.data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch evaluation comparison:', err);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStatus();
     fetchRuns();
-  }, [fetchStatus, fetchRuns]);
+    fetchExemplarMetadata();
+    fetchEvaluation();
+  }, [fetchStatus, fetchRuns, fetchExemplarMetadata, fetchEvaluation]);
+
+  const handlePrepareDataset = async () => {
+    setIsPreparing(true);
+    try {
+      const res = await fetch('/api/adaption/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datasetType: datasetOrigin, maxRows }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setPreparedData(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to prepare dataset:', err);
+    } finally {
+      setIsPreparing(false);
+    }
+  };
+
+  const handleRequestEstimate = async () => {
+    setIsEstimating(true);
+    try {
+      const res = await fetch('/api/adaption/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          datasetType: datasetOrigin,
+          maxRows,
+          simulateRun,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setEstimateData(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to request estimate:', err);
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const handleToggleExemplars = async () => {
+    if (!exemplarMetadata) return;
+    setIsTogglingExemplars(true);
+    try {
+      const nextState = !exemplarMetadata.isEnabled;
+      const res = await fetch('/api/adaption/exemplars/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: nextState }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setExemplarMetadata(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to toggle exemplars:', err);
+    } finally {
+      setIsTogglingExemplars(false);
+    }
+  };
+
+  const handleRunEvaluation = async () => {
+    setIsEvaluating(true);
+    try {
+      const res = await fetch('/api/adaption/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sampleSize: 6, datasetType: datasetOrigin }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setEvaluation(json.data);
+        setActiveTab('evaluation');
+      }
+    } catch (err) {
+      console.error('Failed to run empirical evaluation:', err);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   const handleStartRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,17 +223,20 @@ export const AdaptionPage: React.FC = () => {
           datasetType: datasetOrigin,
           maxRows: Number(maxRows) || 20,
           simulateRun,
+          confirmed: simulateRun ? true : confirmLiveExecution,
         }),
       });
 
       if (res.ok) {
         const result = await res.json();
         await fetchRuns();
+        await fetchExemplarMetadata();
         if (result.data) {
           setSelectedRun(result.data);
         }
         setIsModalOpen(false);
         setDatasetName('');
+        setConfirmLiveExecution(false);
         setRunError(null);
       } else {
         const errorJson = await res.json().catch(() => ({}));
@@ -124,6 +258,7 @@ export const AdaptionPage: React.FC = () => {
           setSelectedRun(json.data);
         }
         await fetchRuns();
+        await fetchExemplarMetadata();
       }
     } catch (err) {
       console.error('Failed to sync Adaption run:', err);
@@ -147,7 +282,10 @@ export const AdaptionPage: React.FC = () => {
               <StatsCounter value={runs.length} /> Evaluations
             </Badge>
           </div>
-                  </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Transform customer feedback into instruction datasets, evaluate alignment, and inject validated exemplars into downstream AI.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
@@ -155,6 +293,8 @@ export const AdaptionPage: React.FC = () => {
             onClick={() => {
               fetchStatus();
               fetchRuns();
+              fetchExemplarMetadata();
+              fetchEvaluation();
             }}
             isLoading={isLoading}
             leftIcon={<RotateCw className="h-4 w-4" />}
@@ -164,7 +304,10 @@ export const AdaptionPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              handleRequestEstimate();
+              setIsModalOpen(true);
+            }}
             leftIcon={<Play className="h-4 w-4" />}
           >
             Run Adaption Workflow
@@ -172,53 +315,204 @@ export const AdaptionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Connection status: one line, details on demand */}
-      <details className="group rounded-2xl bg-indigo-950/45 px-5 py-4 backdrop-blur-sm">
+      {/* Connection & Configuration Status Banner */}
+      <details className="group rounded-2xl bg-indigo-950/45 px-5 py-4 backdrop-blur-sm shadow-xs border border-indigo-500/20">
         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 text-base text-white [&::-webkit-details-marker]:hidden">
           <span className="flex flex-wrap items-center gap-3">
             <BrainCircuit className="h-5 w-5 text-indigo-300" />
-            <span className="font-semibold">Adaption API</span>
+            <span className="font-semibold">Adaption API Integration</span>
             {providerStatus?.isMockMode ? (
-              <Badge variant="warning" size="sm">Simulation mode</Badge>
-            ) : providerStatus?.configured ? (
-              <Badge variant="success" size="sm">Connected</Badge>
+              <Badge variant="warning" size="sm">Verified Simulation Mode</Badge>
+            ) : providerStatus?.validationState === 'configured' || providerStatus?.validationState === 'connected' ? (
+              <Badge variant="success" size="sm">Configured ({providerStatus.apiKeyMasked || 'API Key Safe'})</Badge>
+            ) : providerStatus?.validationState === 'auth_failed' ? (
+              <Badge variant="danger" size="sm">Authentication Diagnostic (Check Token)</Badge>
             ) : (
-              <Badge variant="neutral" size="sm">API key not configured</Badge>
+              <Badge variant="neutral" size="sm">API Key Unconfigured</Badge>
             )}
           </span>
-          <span className="text-sm text-indigo-200 group-open:hidden">Details</span>
-          <span className="hidden text-sm text-indigo-200 group-open:inline">Hide</span>
+          <span className="text-sm text-indigo-200 group-open:hidden">View Details</span>
+          <span className="hidden text-sm text-indigo-200 group-open:inline">Hide Details</span>
         </summary>
-        <div className="mt-4 space-y-3 text-base text-indigo-100">
+        <div className="mt-4 space-y-3 text-sm text-indigo-100 border-t border-indigo-500/20 pt-3">
           <p>{providerStatus?.message || 'Checking Adaption Labs connection...'}</p>
-          <p className="text-sm text-indigo-200">
-            Endpoint: {providerStatus?.baseUrl || 'https://api.prod.adaptionlabs.ai/api/v1'}
-          </p>
-          <p className="text-sm text-indigo-200">
-            Evaluates dataset quality (alignment, clarity, diversity) on prompt-completion pairs. It does not
-            fine-tune model weights.
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono text-indigo-200">
+            <div>Endpoint: {providerStatus?.baseUrl || 'https://api.prod.adaptionlabs.ai/api/v1'}</div>
+            <div>Key Status: {providerStatus?.apiKeyMasked || 'None (Running local simulation fallback)'}</div>
+          </div>
+          <p className="text-xs text-indigo-300">
+            <strong>Architecture Notice:</strong> Adaption Labs evaluates dataset instruction alignment and clarity. It generates validated exemplars for in-context few-shot prompt enhancement without modifying model weights.
           </p>
         </div>
       </details>
 
-      {/* Workflow: four steps */}
-      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { icon: Database, label: 'Prepare Data' },
-          { icon: Code2, label: 'Run Adaption' },
-          { icon: Award, label: 'Evaluate' },
-          { icon: Sparkles, label: 'Use Verified Examples' },
-        ].map(({ icon: Icon, label }, i) => (
-          <li key={label} className="flex items-center gap-3 rounded-2xl bg-indigo-950/45 px-4 py-3.5 backdrop-blur-sm">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/25 text-indigo-100">
-              <Icon className="h-5 w-5" />
-            </span>
-            <span className="text-base font-semibold text-white">
-              <span className="text-indigo-300">{i + 1}.</span> {label}
-            </span>
-          </li>
-        ))}
-      </ol>
+      {/* 6-Step Workflow Stepper */}
+      <div className="rounded-2xl bg-indigo-950/45 p-4 backdrop-blur-sm border border-indigo-500/20">
+        <div className="text-xs font-semibold uppercase tracking-wider text-indigo-300 mb-3 flex items-center gap-2">
+          <Layers className="h-4 w-4" />
+          <span>Adaption End-to-End Pipeline</span>
+        </div>
+        <ol className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {[
+            { step: '1', title: 'Prepare Data', desc: 'Deduplicate & Format' },
+            { step: '2', title: 'Review Estimate', desc: 'Credits & USD Cost' },
+            { step: '3', title: 'Run Adaption', desc: 'Verified Execution' },
+            { step: '4', title: 'Validate Output', desc: 'Reject Malformed' },
+            { step: '5', title: 'Evaluate', desc: 'Baseline vs. Adapted' },
+            { step: '6', title: 'Integrate', desc: 'Few-Shot Exemplars' },
+          ].map(({ step, title, desc }) => (
+            <li key={step} className="rounded-xl bg-indigo-900/40 p-2.5 border border-indigo-500/10 flex flex-col justify-between">
+              <span className="text-[10px] font-bold text-indigo-400">STEP {step}</span>
+              <span className="text-xs font-bold text-white mt-1">{title}</span>
+              <span className="text-[10px] text-indigo-200 mt-0.5">{desc}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Pipeline Action & Integration Control Center */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Data Preparation & Deduplication */}
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4 text-indigo-600" />
+                <CardTitle className="text-sm">1. Dataset Preparation</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrepareDataset}
+                isLoading={isPreparing}
+              >
+                Prepare
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2 text-xs">
+            {preparedData ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-slate-600">
+                  <span>Source Records:</span>
+                  <span className="font-semibold text-slate-900">{preparedData.totalSourceRecords}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Unique Reviews:</span>
+                  <span className="font-semibold text-emerald-600">{preparedData.uniqueReviewsCount}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Duplicates Excluded:</span>
+                  <span className="font-semibold text-amber-600">{preparedData.duplicatesExcluded}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Prepared Pairs:</span>
+                  <span className="font-semibold text-indigo-600">{preparedData.recordsCount}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 leading-tight">
+                  {preparedData.sourceLabelNotice}
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-500 leading-relaxed">
+                Click <strong>Prepare</strong> to normalize customer feedback, filter exact duplicates, and format prompt-completion pairs while preserving the original database intact.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Cost Estimation & Credit Safeguard */}
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+                <CardTitle className="text-sm">2. Credit Estimate</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestEstimate}
+                isLoading={isEstimating}
+              >
+                Estimate
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2 text-xs">
+            {estimateData ? (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-slate-600">
+                  <span>Sample Size:</span>
+                  <span className="font-semibold text-slate-900">{estimateData.recordsCount} records</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Credits Required:</span>
+                  <span className="font-semibold text-indigo-600">{estimateData.estimatedCredits} credits</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Approx Cost:</span>
+                  <span className="font-semibold text-emerald-600">${estimateData.estimatedCostUsd} USD</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Mode:</span>
+                  <Badge variant={estimateData.isMock ? 'warning' : 'success'} size="sm">
+                    {estimateData.isMock ? 'Simulation (Free)' : 'Live API'}
+                  </Badge>
+                </div>
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 leading-tight">
+                  {estimateData.explanation}
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-500 leading-relaxed">
+                Click <strong>Estimate</strong> to calculate credit and USD expenditure before triggering any remote execution.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Downstream Exemplar Library Integration */}
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                <CardTitle className="text-sm">6. AI Prompt Integration</CardTitle>
+              </div>
+              <Button
+                variant={exemplarMetadata?.isEnabled ? 'primary' : 'outline'}
+                size="sm"
+                onClick={handleToggleExemplars}
+                isLoading={isTogglingExemplars}
+              >
+                {exemplarMetadata?.isEnabled ? 'Enabled' : 'Disabled'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 space-y-2 text-xs">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-slate-600">
+                <span>Library Version:</span>
+                <span className="font-mono font-semibold text-slate-900 text-[11px]">
+                  {exemplarMetadata?.version || 'v1.0.0-uninitialized'}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Approved Exemplars:</span>
+                <span className="font-semibold text-purple-600">{exemplarMetadata?.count || 0} patterns</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Categories Covered:</span>
+                <span className="font-semibold text-slate-700">{exemplarMetadata?.categories?.length || 0} domains</span>
+              </div>
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 leading-tight">
+                When enabled, FeedbackAnalyzer injects validated exemplars into customer review analysis prompts.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Main Content Layout: Run History & Run Detail Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -228,7 +522,7 @@ export const AdaptionPage: React.FC = () => {
             <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Adaption Runs</CardTitle>
-                
+                <CardDescription className="text-xs">Persisted jobs and evaluations</CardDescription>
               </div>
               <Badge variant="neutral" size="sm">
                 {runs.length} Runs
@@ -240,7 +534,7 @@ export const AdaptionPage: React.FC = () => {
                 <div className="text-center py-8 px-4 text-slate-500 text-xs">
                   <BrainCircuit className="h-8 w-8 mx-auto text-slate-300 mb-2" />
                   <p className="font-medium">No Adaption runs recorded yet.</p>
-                  
+                  <p className="text-slate-400 mt-1">Start a workflow above to generate and evaluate prompt datasets.</p>
                 </div>
               ) : (
                 runs.map((r) => {
@@ -274,6 +568,8 @@ export const AdaptionPage: React.FC = () => {
                               ? 'success'
                               : r.status === 'failed'
                               ? 'danger'
+                              : r.status === 'blocked_confirmation_required'
+                              ? 'warning'
                               : r.status === 'unconfigured'
                               ? 'warning'
                               : 'neutral'
@@ -313,7 +609,7 @@ export const AdaptionPage: React.FC = () => {
                       <CardTitle className="text-lg">{selectedRun.name}</CardTitle>
                       {selectedRun.isMock && (
                         <Badge variant="warning" size="sm">
-                          Simulation
+                          Simulation Mode
                         </Badge>
                       )}
                       <Badge
@@ -343,7 +639,7 @@ export const AdaptionPage: React.FC = () => {
                       onClick={() => handleExport(selectedRun.id, 'jsonl')}
                       leftIcon={<Download className="h-3.5 w-3.5" />}
                     >
-                      Export JSONL
+                      JSONL
                     </Button>
                     <Button
                       variant="outline"
@@ -351,7 +647,7 @@ export const AdaptionPage: React.FC = () => {
                       onClick={() => handleExport(selectedRun.id, 'csv')}
                       leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}
                     >
-                      Export CSV
+                      CSV
                     </Button>
                   </div>
                 </div>
@@ -406,7 +702,17 @@ export const AdaptionPage: React.FC = () => {
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Sample Before & After Records ({selectedRun.samplePairs.length})
+                    Sample Records ({selectedRun.samplePairs?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('evaluation')}
+                    className={`pb-2.5 transition-colors border-b-2 ${
+                      activeTab === 'evaluation'
+                        ? 'border-indigo-600 text-indigo-600'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Empirical Evaluation Benchmark
                   </button>
                   <button
                     onClick={() => setActiveTab('exemplars')}
@@ -416,7 +722,7 @@ export const AdaptionPage: React.FC = () => {
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Model Prompt Exemplars
+                    Few-Shot Patterns
                   </button>
                   <button
                     onClick={() => setActiveTab('rawJson')}
@@ -426,82 +732,168 @@ export const AdaptionPage: React.FC = () => {
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    Raw Adaption Payload
+                    Raw Payload
                   </button>
                 </div>
               </CardHeader>
 
               <CardContent className="p-4 space-y-4">
+                {/* Tab 1: Comparison Samples */}
                 {activeTab === 'comparison' && (
                   <div className="space-y-4">
-                    {selectedRun.samplePairs.map((pair, idx) => (
-                      <div
-                        key={pair.originalId || idx}
-                        className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                    {selectedRun.samplePairs && selectedRun.samplePairs.length > 0 ? (
+                      selectedRun.samplePairs.map((pair, idx) => (
+                        <div
+                          key={pair.originalId || idx}
+                          className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-mono text-slate-400">
+                              Sample #{idx + 1} • {pair.originalId} {pair.duplicateCount && pair.duplicateCount > 1 ? `(${pair.duplicateCount} identical occurrences)` : ''}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="indigo" size="sm">{pair.category}</Badge>
+                              <Badge
+                                variant={pair.sentiment === 'positive' ? 'success' : pair.sentiment === 'negative' ? 'danger' : 'neutral'}
+                                size="sm"
+                              >
+                                {pair.sentiment}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="space-y-1 rounded-lg bg-white p-3 border border-slate-200">
+                              <div className="font-semibold text-slate-700">Instruction Prompt (Input)</div>
+                              <p className="text-slate-600 whitespace-pre-wrap">{pair.prompt}</p>
+                            </div>
+                            <div className="space-y-1 rounded-lg bg-white p-3 border border-slate-200">
+                              <div className="font-semibold text-slate-700">Grounded Completion (Output)</div>
+                              <pre className="text-slate-800 whitespace-pre-wrap font-mono text-[11px] overflow-x-auto">
+                                {pair.completion}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-6 text-slate-500 text-xs">No sample pairs recorded for this run.</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 2: Empirical Evaluation Benchmark */}
+                {activeTab === 'evaluation' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">Baseline vs. Adaption-Enhanced Comparison</h4>
+                        <p className="text-xs text-slate-500">
+                          Empirical measurement on isolated test records (guaranteed leakage-free).
+                        </p>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleRunEvaluation}
+                        isLoading={isEvaluating}
+                        leftIcon={<Award className="h-3.5 w-3.5" />}
                       >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono text-slate-400">Sample #{idx + 1} • {pair.originalId}</span>
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="indigo" size="sm">{pair.category}</Badge>
-                            <Badge
-                              variant={pair.sentiment === 'positive' ? 'success' : pair.sentiment === 'negative' ? 'danger' : 'neutral'}
-                              size="sm"
-                            >
-                              {pair.sentiment}
-                            </Badge>
-                          </div>
-                        </div>
+                        Run Benchmark Evaluation
+                      </Button>
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          {/* Before: Raw Customer Input */}
-                          <div className="rounded-lg bg-white border border-slate-200 p-3 space-y-1.5">
-                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-                              Before: Input Customer Review
+                    {evaluation ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500">Structured JSON Validity</div>
+                            <div className="text-base font-bold text-slate-900 mt-1">
+                              {(evaluation.baseline.validStructuredOutputRate * 100).toFixed(0)}% → <span className="text-emerald-600">{(evaluation.adapted.validStructuredOutputRate * 100).toFixed(0)}%</span>
                             </div>
-                            <p className="text-slate-800 italic leading-relaxed">
-                              "{pair.prompt.replace(/^Classify[^\n]+\n\nReview:\s*"?/, '').replace(/"?$/, '')}"
-                            </p>
-                            <div className="text-[10px] text-slate-400 font-mono pt-1">
-                              Origin: {String(pair.context?.source || 'Import')} • Raw text unnormalized
+                            <div className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+                              {evaluation.delta.structuredOutputDiff >= 0 ? `+${(evaluation.delta.structuredOutputDiff * 100).toFixed(1)}%` : `${(evaluation.delta.structuredOutputDiff * 100).toFixed(1)}%`}
                             </div>
                           </div>
 
-                          {/* After: Formatted Instruction Output */}
-                          <div className="rounded-lg bg-indigo-50/50 border border-indigo-100 p-3 space-y-1.5 font-mono text-[11px]">
-                            <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wide font-sans">
-                              After: Evaluated SFT Output Completion
+                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500">Category Consistency</div>
+                            <div className="text-base font-bold text-slate-900 mt-1">
+                              {(evaluation.baseline.categoryAgreementRate * 100).toFixed(0)}% → <span className="text-indigo-600">{(evaluation.adapted.categoryAgreementRate * 100).toFixed(0)}%</span>
                             </div>
-                            <pre className="text-slate-800 whitespace-pre-wrap overflow-x-auto text-[11px] bg-white p-2 rounded border border-indigo-100">
-                              {pair.completion}
-                            </pre>
+                            <div className="text-[10px] text-indigo-600 font-semibold mt-0.5">
+                              {evaluation.delta.categoryAgreementDiff >= 0 ? `+${(evaluation.delta.categoryAgreementDiff * 100).toFixed(1)}%` : `${(evaluation.delta.categoryAgreementDiff * 100).toFixed(1)}%`}
+                            </div>
+                          </div>
+
+                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500">Evidence Grounding</div>
+                            <div className="text-base font-bold text-slate-900 mt-1">
+                              {(evaluation.baseline.evidenceGroundingRate * 100).toFixed(0)}% → <span className="text-purple-600">{(evaluation.adapted.evidenceGroundingRate * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="text-[10px] text-purple-600 font-semibold mt-0.5">
+                              {evaluation.delta.groundingDiff >= 0 ? `+${(evaluation.delta.groundingDiff * 100).toFixed(1)}%` : `${(evaluation.delta.groundingDiff * 100).toFixed(1)}%`}
+                            </div>
+                          </div>
+
+                          <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                            <div className="text-slate-500">Average Confidence</div>
+                            <div className="text-base font-bold text-slate-900 mt-1">
+                              {evaluation.baseline.avgConfidence.toFixed(2)} → <span className="text-emerald-600">{evaluation.adapted.avgConfidence.toFixed(2)}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              Latency: {evaluation.adapted.avgLatencyMs}ms ({evaluation.delta.latencyDiffMs >= 0 ? `+${evaluation.delta.latencyDiffMs}ms` : `${evaluation.delta.latencyDiffMs}ms`})
+                            </div>
                           </div>
                         </div>
+
+                        <div className="rounded-lg bg-indigo-50/70 border border-indigo-100 p-3 space-y-1.5 text-xs text-indigo-900">
+                          <div className="flex items-center gap-1.5 font-semibold text-indigo-950">
+                            <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                            <span>Evaluation Transparency & Methodology</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-indigo-900">
+                            {evaluation.limitations}
+                          </p>
+                          <p className="text-[11px] text-indigo-700 leading-relaxed">
+                            {evaluation.sourceCategoryDisclaimer}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 px-4 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs">
+                        <Award className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+                        <p className="font-semibold text-slate-800">No evaluation benchmark run yet</p>
+                        <p className="text-slate-400 mt-1">
+                          Click &ldquo;Run Benchmark Evaluation&rdquo; above to execute a leakage-free comparison between baseline zero-shot and Adaption-enhanced few-shot prompting.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 3: Few-shot patterns */}
+                {activeTab === 'exemplars' && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-slate-500">
+                      These validated prompt-completion pairs are dynamically injected into InsightFlow&apos;s analysis prompt to guide categorization and schema compliance.
+                    </p>
+                    {selectedRun.samplePairs.slice(0, 3).map((pair, idx) => (
+                      <div key={idx} className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-800">Pattern #{idx + 1} ({pair.category})</span>
+                          <Badge variant="indigo" size="sm">Grounded Exemplar</Badge>
+                        </div>
+                        <div className="text-slate-600 line-clamp-2">{pair.prompt}</div>
+                        <pre className="text-slate-800 font-mono text-[10px] bg-white p-2 rounded border border-slate-200 overflow-x-auto">
+                          {pair.completion}
+                        </pre>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {activeTab === 'exemplars' && (
-                  <div className="space-y-3">
-                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 text-xs text-purple-900">
-                      <strong>Few-Shot Prompt Grounding: </strong>
-                      These evaluated prompt-completion pairs are dynamically injected into InsightFlow's structured classification prompt to eliminate hallucinations and calibrate sentiment classification.
-                    </div>
-
-                    <div className="space-y-3">
-                      {selectedRun.samplePairs.slice(0, 3).map((pair, idx) => (
-                        <div key={idx} className="p-3 bg-white rounded-lg border border-slate-200 font-mono text-xs space-y-1">
-                          <div className="text-indigo-600 font-bold font-sans">Exemplar #{idx + 1} ({pair.category})</div>
-                          <div className="text-slate-500 font-sans text-xs">Prompt: {pair.prompt}</div>
-                          <div className="text-emerald-700 font-mono text-[11px] bg-slate-50 p-2 rounded">
-                            {pair.completion}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
+                {/* Tab 4: Raw JSON */}
                 {activeTab === 'rawJson' && (
                   <div className="rounded-lg bg-slate-900 text-emerald-400 p-4 font-mono text-xs overflow-x-auto">
                     <pre>
@@ -535,7 +927,7 @@ export const AdaptionPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Trigger Run Modal */}
+      {/* Trigger Run Modal with Upfront Estimate & Confirmation */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95">
@@ -595,6 +987,29 @@ export const AdaptionPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Estimate Preview */}
+              {estimateData && (
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1 text-slate-700">
+                  <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Upfront Cost Estimate</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Target Rows:</span>
+                    <span className="font-medium">{estimateData.recordsCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Estimated Credits:</span>
+                    <span className="font-medium text-indigo-600">{estimateData.estimatedCredits} credits</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Estimated Cost:</span>
+                    <span className="font-medium text-emerald-600">${estimateData.estimatedCostUsd} USD</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Simulation Mode Toggle */}
               <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100 space-y-2 text-xs text-indigo-950">
                 <div className="flex items-center justify-between">
                   <label className="font-semibold flex items-center gap-1.5 cursor-pointer">
@@ -611,9 +1026,24 @@ export const AdaptionPage: React.FC = () => {
                   </Badge>
                 </div>
                 <p className="text-[11px] text-indigo-800 leading-relaxed">
-                  When enabled or when ADAPTION_API_KEY is unset, runs through full schema validation, dataset transformation, and mock quality scoring without remote API failures.
+                  When enabled, runs full dataset transformation, duplicate detection, and schema validation without consuming remote API credits.
                 </p>
               </div>
+
+              {/* Explicit Confirmation for Live Runs */}
+              {!simulateRun && (
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 space-y-1.5 text-xs text-amber-900">
+                  <label className="font-semibold flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={confirmLiveExecution}
+                      onChange={(e) => setConfirmLiveExecution(e.target.checked)}
+                      className="mt-0.5 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span>I authorize running this live Adaption job and understand it may consume remote API credits.</span>
+                  </label>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <Button
@@ -629,6 +1059,7 @@ export const AdaptionPage: React.FC = () => {
                   variant="primary"
                   size="sm"
                   isLoading={isExecuting}
+                  disabled={!simulateRun && !confirmLiveExecution}
                   leftIcon={<Play className="h-4 w-4" />}
                 >
                   Start Adaption Run
