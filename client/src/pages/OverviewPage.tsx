@@ -32,7 +32,6 @@ import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
 import { WorkflowFeatureBento } from '../components/landing/WorkflowFeatureBento';
-import { HeroBackground } from '../components/canvas/HeroBackground';
 import { StatsCounter } from '../components/ui/stats-counter';
 import { ShareSheet } from '../components/ui/share-sheet';
 import { LineHoverLink } from '../components/ui/line-hover-link';
@@ -221,7 +220,6 @@ export const OverviewPage: React.FC = () => {
     <div ref={pageContainerRef}>
       {/* Hero: full-bleed indigo shader atmosphere */}
       <section className="overview-hero-surface relative isolate overflow-hidden text-white">
-        <HeroBackground />
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
           <div className="max-w-2xl space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/15 px-3 py-1 text-xs font-medium text-indigo-100 backdrop-blur-sm">
@@ -262,10 +260,10 @@ export const OverviewPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#f6f7fd] to-transparent" />
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-6 px-4 pb-8 pt-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-3 pb-8 sm:px-6 lg:px-8">
+      <div className="space-y-6 rounded-3xl border border-white/50 bg-white/90 p-4 shadow-2xl shadow-indigo-950/30 backdrop-blur-md sm:p-6 lg:p-8">
       {/* Page Header with Scope Controls */}
       <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
         <div>
@@ -1055,6 +1053,7 @@ export const OverviewPage: React.FC = () => {
 
       {/* End-to-End Product Storytelling Journey Section */}
       <ProductStorySection />
+      </div>
       </div>
     </div>
   );

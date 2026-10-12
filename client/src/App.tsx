@@ -8,6 +8,7 @@ import { ActionCenterPage } from './pages/ActionCenterPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AdaptionPage } from './pages/AdaptionPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { SmoothScrollProvider } from './components/providers/SmoothScrollProvider';
 
 export const App: React.FC = () => {
@@ -24,6 +25,7 @@ export const App: React.FC = () => {
             <Route path="/adaption" element={<AdaptionPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
