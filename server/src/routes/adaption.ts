@@ -240,10 +240,71 @@ router.get('/runs/:id/export', (req: Request, res: Response) => {
  */
 router.get('/exemplars', (_req: Request, res: Response) => {
   const exemplars = adaptionService.getFewShotExemplars();
+  const metadata = adaptionService.getExemplarLibraryMetadata();
   res.status(200).json({
     data: exemplars,
     count: exemplars.length,
+    metadata,
     description: 'High-quality evaluated exemplars from completed Adaption runs for model few-shot prompting.',
+  });
+});
+
+/**
+ * GET /api/adaption/exemplars/metadata
+ * Retrieves active exemplar library status, version, and enabled flag.
+ */
+router.get('/exemplars/metadata', (_req: Request, res: Response) => {
+  const metadata = adaptionService.getExemplarLibraryMetadata();
+  res.status(200).json({ success: true, data: metadata });
+});
+
+/**
+ * POST /api/adaption/exemplars/toggle
+ * Enables or disables Adaption exemplars in downstream AI prompts.
+ */
+router.post('/exemplars/toggle', (req: Request, res: Response) => {
+  const { enabled } = req.body || {};
+  const metadata = adaptionService.toggleExemplars(Boolean(enabled));
+  res.status(200).json({
+    success: true,
+    data: metadata,
+    message: `Adaption few-shot exemplars ${metadata.isEnabled ? 'enabled' : 'disabled'} for analysis pipeline.`,
+  });
+});
+
+/**
+ * POST /api/adaption/evaluate
+ * Runs repeatable, empirical comparison between baseline and Adaption-enhanced analysis.
+ */
+router.post('/evaluate', async (req: Request, res: Response) => {
+  try {
+    const { sampleSize, datasetType } = req.body || {};
+    const comparison = await adaptionService.evaluateComparison({
+      sampleSize: sampleSize ? Number(sampleSize) : undefined,
+      datasetType,
+    });
+    res.status(200).json({
+      success: true,
+      data: comparison,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Evaluation run failed';
+    res.status(400).json({
+      error: 'EvaluationError',
+      message,
+    });
+  }
+});
+
+/**
+ * GET /api/adaption/evaluation
+ * Retrieves the most recent evaluation comparison.
+ */
+router.get('/evaluation', (_req: Request, res: Response) => {
+  const evaluation = adaptionService.getLatestEvaluation();
+  res.status(200).json({
+    data: evaluation,
+    available: Boolean(evaluation),
   });
 });
 

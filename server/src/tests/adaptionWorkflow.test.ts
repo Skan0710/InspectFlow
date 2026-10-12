@@ -502,4 +502,261 @@ describe('InsightFlow Adaption Labs Integration & Evaluation Workflow', () => {
       assert.strictEqual(body2.data.id, body1.data.id, 'Must return same run ID for repeated request');
     });
   });
+
+  describe('7. Deduplication, Output Validation & Exemplar Library Integration', () => {
+    test('deduplicates identical review texts for adaptation corpus while preserving all original database records', async () => {
+      const duplicateReview = 'The recurring subscription billing failed without sending an email notification.';
+      const chunk = [
+        {
+          id: 'fb-dup-1',
+          review: duplicateReview,
+          category: 'Billing and Subscriptions',
+          source: 'Zendesk',
+          datasetType: 'genuine_import' as const,
+          contentHash: 'hash-dup-1',
+          rowNumber: 1,
+          batchId: 'batch-dup',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+        {
+          id: 'fb-dup-2',
+          review: duplicateReview,
+          category: 'Billing and Subscriptions',
+          source: 'Zendesk',
+          datasetType: 'genuine_import' as const,
+          contentHash: 'hash-dup-2',
+          rowNumber: 2,
+          batchId: 'batch-dup',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+        {
+          id: 'fb-dup-3',
+          review: duplicateReview,
+          category: 'Billing and Subscriptions',
+          source: 'Zendesk',
+          datasetType: 'genuine_import' as const,
+          contentHash: 'hash-dup-3',
+          rowNumber: 3,
+          batchId: 'batch-dup',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+        {
+          id: 'fb-dup-4',
+          review: 'The dashboard analytics charts load very quickly now.',
+          category: 'Product Feedback',
+          source: 'Survey',
+          datasetType: 'genuine_import' as const,
+          contentHash: 'hash-dup-4',
+          rowNumber: 4,
+          batchId: 'batch-dup',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ];
+
+      await store.saveRecordsChunk(chunk);
+
+      const res = await fetch(`${baseUrl}/prepare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datasetType: 'genuine_import' }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const json: any = await res.json();
+      assert.strictEqual(json.success, true);
+
+      // Verify counts: 2 unique reviews from 4 records
+      assert.strictEqual(json.data.uniqueReviewsCount, 2);
+      assert.strictEqual(json.data.duplicatesExcluded, 2);
+      assert.strictEqual(json.data.recordsCount, 2);
+      assert.strictEqual(json.data.exclusions.duplicateReview, 2);
+      assert.ok(json.data.sourceLabelNotice.includes('source-provided metadata'));
+
+      // Find the pair with duplicates
+      const dupPair = json.data.pairs.find((p: any) => p.prompt.includes('recurring subscription billing'));
+      assert.ok(dupPair);
+      assert.strictEqual(dupPair.duplicateCount, 3);
+      assert.strictEqual(dupPair.originalIds.length, 3);
+      assert.ok(dupPair.originalIds.includes('fb-dup-1'));
+      assert.ok(dupPair.originalIds.includes('fb-dup-2'));
+      assert.ok(dupPair.originalIds.includes('fb-dup-3'));
+
+      // Verify all 4 original records in database store remain completely intact
+      const stored1 = store.getRecordById('fb-dup-1');
+      const stored2 = store.getRecordById('fb-dup-2');
+      const stored3 = store.getRecordById('fb-dup-3');
+      const stored4 = store.getRecordById('fb-dup-4');
+      assert.ok(stored1 && stored2 && stored3 && stored4, 'All original records must be preserved in store');
+    });
+
+    test('validates adapted output and rejects malformed completion JSON', async () => {
+      const preparer = new (await import('../services/adaption/datasetPreparer.js')).DatasetPreparer();
+      const validPair = {
+        originalId: 'p-1',
+        prompt: 'Classify review:\n\nReview: "Great support response."',
+        completion: JSON.stringify({
+          category: 'Customer Service',
+          sentiment: 'positive',
+          primaryTopic: 'Support Team',
+          urgencyScore: 0.2,
+        }),
+        category: 'Customer Service',
+        sentiment: 'positive',
+        urgencyScore: 0.2,
+        primaryTopic: 'Support Team',
+      };
+      const invalidPair = {
+        originalId: 'p-2',
+        prompt: 'Classify review:\n\nReview: "Crashing on boot."',
+        completion: 'This is not valid JSON at all',
+        category: 'Product Feedback',
+        sentiment: 'negative',
+        urgencyScore: 0.9,
+        primaryTopic: 'Crash',
+      };
+
+      const result = preparer.validateAdaptedOutput([validPair, invalidPair]);
+      assert.strictEqual(result.valid, false);
+      assert.strictEqual(result.validatedPairs.length, 1);
+      assert.strictEqual(result.rejectedCount, 1);
+      assert.ok(result.errors[0].includes('not valid JSON'));
+    });
+
+    test('injects approved Adaption exemplars into analyzer prompt and tracks versioning', async () => {
+      const { ExemplarLibrary } = await import('../services/adaption/exemplarLibrary.js');
+      const { FeedbackAnalyzer } = await import('../services/analysis/feedbackAnalyzer.js');
+
+      const library = ExemplarLibrary.getInstance();
+      library.setApprovedExemplars([
+        {
+          originalId: 'ex-approved-1',
+          prompt: 'Classify the following customer feedback into category, sentiment, primary topic, and urgency score:\n\nReview: "Payout webhook delivers payload within 200ms."',
+          completion: JSON.stringify({
+            category: 'Payments and Billing',
+            sentiment: 'positive',
+            primaryTopic: 'Webhook Reliability',
+            urgencyScore: 0.1,
+            keyPhrases: ['Payout webhook'],
+          }),
+          category: 'Payments and Billing',
+          sentiment: 'positive',
+          urgencyScore: 0.1,
+          primaryTopic: 'Webhook Reliability',
+        },
+      ], 'exemplars-v1.0.0-verified-eval');
+
+      const { TestAIProvider } = await import('../services/ai/providers/testProvider.js');
+      const testAI = new TestAIProvider();
+      const analyzer = new FeedbackAnalyzer(testAI, store, library);
+
+      // Analyze with exemplars active
+      const result = await analyzer.analyzeReview({
+        feedbackId: 'fb-eval-target-1',
+        review: 'The payment reconciliation report completed in 3 seconds.',
+        category: 'Payments and Billing',
+      }, { useExemplars: true });
+
+      assert.strictEqual(result.isAdaptionEnhanced, true);
+      assert.strictEqual(result.exemplarLibraryVersion, 'exemplars-v1.0.0-verified-eval');
+      assert.ok(result.promptVersion.includes('exemplars-v1.0.0-verified-eval'));
+
+      // Clean fallback when exemplars are disabled
+      const fallbackResult = await analyzer.analyzeReview({
+        feedbackId: 'fb-eval-target-2',
+        review: 'The payment reconciliation report completed in 3 seconds.',
+        category: 'Payments and Billing',
+      }, { useExemplars: false });
+
+      assert.strictEqual(fallbackResult.isAdaptionEnhanced, false);
+      assert.strictEqual(fallbackResult.promptVersion, 'v1.0.0');
+    });
+  });
+
+  describe('8. Baseline vs. Adaption-Enhanced Empirical Evaluation', () => {
+    test('POST /api/adaption/evaluate compares baseline and adapted pipeline without data leakage', async () => {
+      await store.saveRecordsChunk([
+        {
+          id: 'fb-bench-1',
+          review: 'Database connection pools are properly recycled during peak loads.',
+          category: 'Infrastructure and Performance',
+          source: 'Monitoring',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-bench-1',
+          rowNumber: 1,
+          batchId: 'batch-bench',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+        {
+          id: 'fb-bench-2',
+          review: 'Password reset emails are delivered within two minutes without delay.',
+          category: 'Authentication and Security',
+          source: 'Helpdesk',
+          datasetType: 'genuine_import',
+          contentHash: 'hash-bench-2',
+          rowNumber: 2,
+          batchId: 'batch-bench',
+          isSample: false,
+          importedAt: new Date().toISOString(),
+        },
+      ]);
+
+      const evalRes = await fetch(`${baseUrl}/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sampleSize: 2, datasetType: 'genuine_import' }),
+      });
+
+      assert.strictEqual(evalRes.status, 200);
+      const evalJson: any = await evalRes.json();
+      assert.strictEqual(evalJson.success, true);
+      assert.strictEqual(evalJson.data.leakageFree, true);
+      assert.ok(evalJson.data.baseline);
+      assert.ok(evalJson.data.adapted);
+      assert.ok(evalJson.data.delta);
+      assert.strictEqual(typeof evalJson.data.baseline.validStructuredOutputRate, 'number');
+      assert.strictEqual(typeof evalJson.data.adapted.validStructuredOutputRate, 'number');
+      assert.ok(evalJson.data.limitations.includes('isolated customer feedback records'));
+      assert.ok(evalJson.data.sourceCategoryDisclaimer.includes('source CSV metadata'));
+
+      // Retrieve persisted evaluation from GET /api/adaption/evaluation
+      const getRes = await fetch(`${baseUrl}/evaluation`);
+      assert.strictEqual(getRes.status, 200);
+      const getJson: any = await getRes.json();
+      assert.strictEqual(getJson.available, true);
+      assert.strictEqual(getJson.data.id, evalJson.data.id);
+    });
+
+    test('exemplar library metadata and toggle controls function accurately', async () => {
+      const metaRes = await fetch(`${baseUrl}/exemplars/metadata`);
+      assert.strictEqual(metaRes.status, 200);
+      const metaJson: any = await metaRes.json();
+      assert.strictEqual(metaJson.success, true);
+      assert.ok(metaJson.data.version);
+
+      // Toggle exemplars off
+      const toggleOffRes = await fetch(`${baseUrl}/exemplars/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: false }),
+      });
+      assert.strictEqual(toggleOffRes.status, 200);
+      const toggleOffJson: any = await toggleOffRes.json();
+      assert.strictEqual(toggleOffJson.data.isEnabled, false);
+
+      // Re-enable
+      const toggleOnRes = await fetch(`${baseUrl}/exemplars/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true }),
+      });
+      assert.strictEqual(toggleOnRes.status, 200);
+      const toggleOnJson: any = await toggleOnRes.json();
+      assert.strictEqual(toggleOnJson.data.isEnabled, true);
+    });
+  });
 });

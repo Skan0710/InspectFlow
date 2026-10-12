@@ -22,9 +22,12 @@ export interface AdaptionColumnMapping {
 
 export interface AdaptionPromptPair {
   originalId: string;
+  originalIds?: string[];
+  duplicateCount?: number;
   prompt: string;
   completion: string;
   category: string;
+  isSourceCategory?: boolean;
   sentiment: string;
   urgencyScore: number;
   primaryTopic: string;
@@ -103,4 +106,40 @@ export interface RunAdaptionOptions {
   simulateRun?: boolean;
   confirmed?: boolean;
   idempotencyKey?: string;
+}
+
+export interface EvaluationMetrics {
+  validStructuredOutputRate: number; // 0.0 - 1.0
+  categoryAgreementRate: number; // 0.0 - 1.0
+  evidenceGroundingRate: number; // 0.0 - 1.0
+  avgConfidence: number; // 0.0 - 1.0
+  avgLatencyMs: number;
+}
+
+export interface AdaptionEvaluationComparison {
+  id: string;
+  sampleSize: number;
+  exemplarLibraryVersion: string;
+  exemplarsCount: number;
+  leakageFree: boolean;
+  baseline: EvaluationMetrics;
+  adapted: EvaluationMetrics;
+  delta: {
+    structuredOutputDiff: number;
+    categoryAgreementDiff: number;
+    groundingDiff: number;
+    confidenceDiff: number;
+    latencyDiffMs: number;
+  };
+  limitations: string;
+  sourceCategoryDisclaimer: string;
+  evaluatedAt: string;
+}
+
+export interface ExemplarLibraryMetadata {
+  version: string;
+  count: number;
+  categories: string[];
+  lastUpdated: string;
+  isEnabled: boolean;
 }

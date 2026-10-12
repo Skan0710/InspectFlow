@@ -2,21 +2,40 @@ import type { RawFeedbackRecord } from '../../types/import.js';
 import type { FeedbackAnalysisRecord } from '../analysis/types.js';
 import type { AdaptionPromptPair, AdaptionColumnMapping } from './types.js';
 
+export interface DatasetExclusions {
+  tooShort: number;
+  duplicateReview: number;
+  unanalyzed: number;
+}
+
 export interface PreparedDatasetResult {
   pairs: AdaptionPromptPair[];
   columnMapping: AdaptionColumnMapping;
   datasetVersion: string;
   recordsCount: number;
   totalSourceRecords: number;
+  uniqueReviewsCount: number;
+  duplicatesExcluded: number;
   skippedCount: number;
+  exclusions: DatasetExclusions;
   categoryBreakdown: Record<string, number>;
   sentimentBreakdown: Record<string, number>;
+  sourceLabelNotice: string;
+}
+
+export interface ValidationOutputResult {
+  valid: boolean;
+  validatedPairs: AdaptionPromptPair[];
+  rejectedCount: number;
+  errors: string[];
 }
 
 export class DatasetPreparer {
   /**
-   * Prepares a representative customer feedback dataset formatted as instruction prompt-completion pairs.
-   * Strictly preserves the original source feedback records without any mutation.
+   * Prepares an adaptation-ready customer feedback dataset formatted as instruction prompt-completion pairs.
+   * - Deduplicates exact repeated review texts while preserving all original feedback IDs.
+   * - Preserves the entire original customer feedback database without alteration.
+   * - Documents that category is a source-provided context label, not ground truth.
    */
   public prepareFeedbackDataset(
     records: RawFeedbackRecord[],
@@ -27,33 +46,58 @@ export class DatasetPreparer {
     } = {}
   ): PreparedDatasetResult {
     const pairs: AdaptionPromptPair[] = [];
+    const seenReviews = new Map<string, AdaptionPromptPair>();
     const categoryBreakdown: Record<string, number> = {};
     const sentimentBreakdown: Record<string, number> = {};
+    const exclusions: DatasetExclusions = {
+      tooShort: 0,
+      duplicateReview: 0,
+      unanalyzed: 0,
+    };
     let skippedCount = 0;
+    let duplicatesExcluded = 0;
 
     for (const record of records) {
-      if (options.maxRows && pairs.length >= options.maxRows) {
-        break;
-      }
-
-      // Input validation: ensure review text is substantive
+      // 1. Input validation & normalization: ensure review text is substantive
       const cleanReview = (record.review || '').trim();
       if (cleanReview.length < 5) {
         skippedCount++;
+        exclusions.tooShort++;
         continue;
+      }
+
+      // 2. Identify exact duplicate review texts across dataset
+      const normalizedText = cleanReview.toLowerCase().replace(/\s+/g, ' ');
+      if (seenReviews.has(normalizedText)) {
+        const canonical = seenReviews.get(normalizedText)!;
+        if (!canonical.originalIds) {
+          canonical.originalIds = [canonical.originalId];
+        }
+        canonical.originalIds.push(record.id);
+        canonical.duplicateCount = (canonical.duplicateCount || 1) + 1;
+        duplicatesExcluded++;
+        exclusions.duplicateReview++;
+        skippedCount++;
+        continue;
+      }
+
+      // Check maxRows limit for unique adaptation pairs
+      if (options.maxRows && pairs.length >= options.maxRows) {
+        break;
       }
 
       const analysis = analysisLookup(record.id);
       if (options.requireAnalyzed && !analysis) {
         skippedCount++;
+        exclusions.unanalyzed++;
         continue;
       }
 
-      // Determine ground-truth or inferred values
+      // 3. Preserve source category as context label (never fabricate verified ground truth)
       const category = record.category || 'General Feedback';
       const sentiment = analysis?.sentiment || 'neutral';
       const urgencyScore = analysis?.urgencyScore ?? 0.5;
-      const primaryTopic = analysis?.primaryTopic || 'General Inquiry';
+      const primaryTopic = analysis?.primaryTopic || category;
       const keyPhrases = analysis?.keyPhrases || [];
 
       // SFT Instruction Prompt
@@ -69,11 +113,14 @@ export class DatasetPreparer {
       };
       const completion = JSON.stringify(completionObj, null, 2);
 
-      pairs.push({
+      const pair: AdaptionPromptPair = {
         originalId: record.id,
+        originalIds: [record.id],
+        duplicateCount: 1,
         prompt,
         completion,
         category,
+        isSourceCategory: true,
         sentiment,
         urgencyScore,
         primaryTopic,
@@ -82,7 +129,10 @@ export class DatasetPreparer {
           rowNumber: record.rowNumber,
           datasetType: record.datasetType || 'genuine_import',
         },
-      });
+      };
+
+      pairs.push(pair);
+      seenReviews.set(normalizedText, pair);
 
       categoryBreakdown[category] = (categoryBreakdown[category] || 0) + 1;
       sentimentBreakdown[sentiment] = (sentimentBreakdown[sentiment] || 0) + 1;
@@ -100,9 +150,57 @@ export class DatasetPreparer {
       datasetVersion: `v1.0.0-${new Date().toISOString().slice(0, 10)}`,
       recordsCount: pairs.length,
       totalSourceRecords: records.length,
+      uniqueReviewsCount: seenReviews.size,
+      duplicatesExcluded,
       skippedCount,
+      exclusions,
       categoryBreakdown,
       sentimentBreakdown,
+      sourceLabelNotice:
+        'Category labels represent source-provided metadata from feedback import, not independently verified ground truth.',
+    };
+  }
+
+  /**
+   * Validates downloaded or adapted prompt-completion pairs before accepting into exemplar library.
+   */
+  public validateAdaptedOutput(pairs: AdaptionPromptPair[]): ValidationOutputResult {
+    const validatedPairs: AdaptionPromptPair[] = [];
+    const errors: string[] = [];
+    let rejectedCount = 0;
+
+    for (const pair of pairs) {
+      if (!pair.prompt || typeof pair.prompt !== 'string' || pair.prompt.trim().length < 5) {
+        rejectedCount++;
+        errors.push(`Pair for ID '${pair.originalId}' rejected: Prompt missing or too short.`);
+        continue;
+      }
+
+      if (!pair.completion || typeof pair.completion !== 'string') {
+        rejectedCount++;
+        errors.push(`Pair for ID '${pair.originalId}' rejected: Missing completion.`);
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(pair.completion);
+        if (!parsed.category || !parsed.sentiment || !parsed.primaryTopic) {
+          rejectedCount++;
+          errors.push(`Pair for ID '${pair.originalId}' rejected: Completion missing required fields.`);
+          continue;
+        }
+        validatedPairs.push(pair);
+      } catch {
+        rejectedCount++;
+        errors.push(`Pair for ID '${pair.originalId}' rejected: Completion is not valid JSON.`);
+      }
+    }
+
+    return {
+      valid: rejectedCount === 0 && validatedPairs.length > 0,
+      validatedPairs,
+      rejectedCount,
+      errors,
     };
   }
 
@@ -116,10 +214,13 @@ export class DatasetPreparer {
           prompt: p.prompt,
           completion: p.completion,
           category: p.category,
+          is_source_category: p.isSourceCategory ?? true,
           sentiment: p.sentiment,
           urgency_score: p.urgencyScore,
           primary_topic: p.primaryTopic,
           source_id: p.originalId,
+          source_ids: p.originalIds || [p.originalId],
+          duplicate_count: p.duplicateCount || 1,
           ...(p.context || {}),
         })
       )
@@ -139,7 +240,16 @@ export class DatasetPreparer {
       return `"${str.replace(/"/g, '""')}"`;
     };
 
-    const headers = ['prompt', 'completion', 'category', 'sentiment', 'urgencyScore', 'primaryTopic', 'sourceId'];
+    const headers = [
+      'prompt',
+      'completion',
+      'category',
+      'sentiment',
+      'urgencyScore',
+      'primaryTopic',
+      'sourceId',
+      'duplicateCount',
+    ];
     const rows = pairs.map((p) =>
       [
         escapeCsv(p.prompt),
@@ -149,9 +259,11 @@ export class DatasetPreparer {
         escapeCsv(p.urgencyScore),
         escapeCsv(p.primaryTopic),
         escapeCsv(p.originalId),
+        escapeCsv(p.duplicateCount || 1),
       ].join(',')
     );
 
     return [headers.join(','), ...rows].join('\r\n');
   }
 }
+

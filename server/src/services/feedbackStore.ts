@@ -12,7 +12,7 @@ import type { IssueStatus, IssueNote, StatusHistoryEntry, IssueDetailResponse } 
 import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
-import type { AdaptionRunRecord } from './adaption/types.js';
+import type { AdaptionRunRecord, AdaptionEvaluationComparison } from './adaption/types.js';
 import type { ReportRecord } from '../types/reports.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,6 +28,7 @@ const ISSUE_FEEDBACK_FILE = path.join(DATA_DIR, 'issue_feedback.json');
 const CLUSTERING_RUNS_FILE = path.join(DATA_DIR, 'clustering_runs.json');
 const ADAPTION_RUNS_FILE = path.join(DATA_DIR, 'adaption_runs.json');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
+const EVALUATION_FILE = path.join(DATA_DIR, 'latest_evaluation.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -47,6 +48,7 @@ export class FeedbackStore {
   private recommendations: Map<string, IssueRecommendation> = new Map();
   private adaptionRuns: Map<string, AdaptionRunRecord> = new Map();
   private reports: Map<string, ReportRecord> = new Map();
+  private latestEvaluation: AdaptionEvaluationComparison | null = null;
   private scoringService = new PriorityScoringService();
 
   private constructor() {
@@ -166,6 +168,11 @@ export class FeedbackStore {
           this.reports.set(item.id, item);
         }
       }
+
+      const evalObj = safeParse<AdaptionEvaluationComparison>(EVALUATION_FILE);
+      if (evalObj) {
+        this.latestEvaluation = evalObj;
+      }
     } catch (err) {
       console.warn('[FeedbackStore] Failed to load state from disk:', err);
     }
@@ -189,6 +196,9 @@ export class FeedbackStore {
       fs.writeFileSync(CLUSTERING_RUNS_FILE, JSON.stringify(this.clusteringRuns), 'utf8');
       fs.writeFileSync(ADAPTION_RUNS_FILE, JSON.stringify(Array.from(this.adaptionRuns.values())), 'utf8');
       fs.writeFileSync(REPORTS_FILE, JSON.stringify(Array.from(this.reports.values())), 'utf8');
+      if (this.latestEvaluation) {
+        fs.writeFileSync(EVALUATION_FILE, JSON.stringify(this.latestEvaluation, null, 2), 'utf8');
+      }
     } catch (err) {
       console.error('[FeedbackStore] Failed to persist data to disk:', err);
     }
@@ -1656,6 +1666,15 @@ export class FeedbackStore {
   public getAdaptionRuns(): AdaptionRunRecord[] {
     const runs = Array.from(this.adaptionRuns.values());
     return runs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public async saveLatestEvaluation(evaluation: AdaptionEvaluationComparison): Promise<void> {
+    this.latestEvaluation = evaluation;
+    this.flushToDisk();
+  }
+
+  public getLatestEvaluation(): AdaptionEvaluationComparison | null {
+    return this.latestEvaluation;
   }
 
   public async saveReport(report: ReportRecord): Promise<void> {

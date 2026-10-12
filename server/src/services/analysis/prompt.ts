@@ -1,3 +1,5 @@
+import type { AdaptionPromptPair } from '../adaption/types.js';
+
 export const PROMPT_VERSION = 'v1.0.0';
 
 export const SYSTEM_PROMPT = `You are a precision customer feedback analysis engine for InsightFlow.
@@ -43,8 +45,45 @@ Respond ONLY with a valid JSON object matching this structure:
   "evidence_phrases": ["exact verbatim phrase 1", "exact verbatim phrase 2"]
 }`;
 
-export function buildFeedbackAnalysisPrompt(review: string, category?: string): string {
-  return `Analyze the following customer review according to your system instructions:
+export function buildFeedbackAnalysisPrompt(
+  review: string,
+  category?: string,
+  exemplars?: AdaptionPromptPair[]
+): string {
+  let exemplarSection = '';
+  if (exemplars && exemplars.length > 0) {
+    const formattedExemplars = exemplars
+      .slice(0, 3)
+      .map((ex, idx) => {
+        let cleanSampleReview = ex.prompt
+          .replace(/^Classify the following customer feedback into category, sentiment, primary topic, and urgency score:\s*\n*\s*Review:\s*"?/is, '')
+          .replace(/"?$/is, '')
+          .trim();
+        if (!cleanSampleReview) cleanSampleReview = ex.prompt;
+
+        let completionObj = ex.completion;
+        try {
+          if (typeof ex.completion === 'string') {
+            completionObj = JSON.stringify(JSON.parse(ex.completion), null, 2);
+          }
+        } catch {
+          // Keep raw string if parsing fails
+        }
+
+        return `### Exemplar ${idx + 1} (Domain Context: ${ex.category}):\nReview: "${cleanSampleReview}"\nVerified Analysis:\n${completionObj}`;
+      })
+      .join('\n\n');
+
+    exemplarSection = `APPROVED ADAPTION-DERIVED EXEMPLARS (Validated Pattern Library):
+Follow the structure and calibration demonstrated in these verified examples:
+
+${formattedExemplars}
+
+-----------------------
+`;
+  }
+
+  return `${exemplarSection}Analyze the following customer review according to your system instructions:
 
 --- CUSTOMER REVIEW ---
 ${review}
@@ -54,3 +93,4 @@ Context Domain Category: ${category || 'Unspecified'}
 
 Generate the strict JSON analysis now:`;
 }
+

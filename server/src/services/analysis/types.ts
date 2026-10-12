@@ -41,6 +41,8 @@ export interface FeedbackAnalysisResult {
   evidencePhrases: string[];
   modelVersion: string;
   promptVersion: string;
+  exemplarLibraryVersion?: string;
+  isAdaptionEnhanced?: boolean;
   analyzedAt: string;
 }
 
@@ -63,6 +65,8 @@ export interface FeedbackAnalysisRecord {
   confidenceScore: number;
   modelVersion: string;
   promptVersion: string;
+  exemplarLibraryVersion?: string;
+  isAdaptionEnhanced?: boolean;
   analyzedAt: string;
   createdAt: string;
   updatedAt: string;

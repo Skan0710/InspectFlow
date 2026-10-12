@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { AdaptionApiClient } from './adaptionClient.js';
 import { DatasetPreparer } from './datasetPreparer.js';
 import { FeedbackStore } from '../feedbackStore.js';
+import { ExemplarLibrary } from './exemplarLibrary.js';
+import { AdaptionEvaluationService, type RunEvaluationOptions } from './adaptionEvaluation.js';
 import type {
   AdaptionProviderStatus,
   AdaptionRunRecord,
@@ -9,18 +11,25 @@ import type {
   RunAdaptionOptions,
   AdaptionPromptPair,
   AdaptionEstimate,
+  AdaptionEvaluationComparison,
+  ExemplarLibraryMetadata,
 } from './types.js';
 
 export class AdaptionService {
   private client: AdaptionApiClient;
   private preparer: DatasetPreparer;
   private store: FeedbackStore;
+  private exemplarLibrary: ExemplarLibrary;
+  private evaluationService: AdaptionEvaluationService;
   private recentIdempotencyMap = new Map<string, { runId: string; timestamp: number }>();
 
   constructor(client?: AdaptionApiClient, store?: FeedbackStore) {
     this.client = client || new AdaptionApiClient();
     this.preparer = new DatasetPreparer();
     this.store = store || FeedbackStore.getInstance();
+    this.exemplarLibrary = ExemplarLibrary.getInstance();
+    this.exemplarLibrary.syncFromRuns(this.store.getAdaptionRuns());
+    this.evaluationService = new AdaptionEvaluationService(this.store, undefined, this.exemplarLibrary);
   }
 
   /**
@@ -321,6 +330,9 @@ export class AdaptionService {
       };
 
       await this.store.saveAdaptionRun(runRecord);
+      if (runRecord.status === 'succeeded') {
+        this.exemplarLibrary.syncFromRuns(this.store.getAdaptionRuns());
+      }
       if (options.idempotencyKey) {
         this.recentIdempotencyMap.set(options.idempotencyKey, { runId: runRecord.id, timestamp: Date.now() });
       }
@@ -389,6 +401,9 @@ export class AdaptionService {
       }
 
       await this.store.saveAdaptionRun(existing);
+      if (existing.status === 'succeeded') {
+        this.exemplarLibrary.syncFromRuns(this.store.getAdaptionRuns());
+      }
       return existing;
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : 'Failed to sync with Adaption API';
@@ -404,22 +419,41 @@ export class AdaptionService {
    * Feeds directly into InsightFlow's few-shot classification and evaluation benchmark.
    */
   public getFewShotExemplars(): AdaptionPromptPair[] {
-    const runs = this.store.getAdaptionRuns();
-    const successfulRuns = runs.filter((r) => r.status === 'succeeded' && r.samplePairs && r.samplePairs.length > 0);
-
-    const exemplars: AdaptionPromptPair[] = [];
-    const seenCategories = new Set<string>();
-
-    for (const run of successfulRuns) {
-      for (const pair of run.samplePairs) {
-        if (!seenCategories.has(pair.category)) {
-          exemplars.push(pair);
-          seenCategories.add(pair.category);
-        }
-      }
+    const fromLibrary = this.exemplarLibrary.getApprovedExemplars();
+    if (fromLibrary.length > 0) {
+      return fromLibrary;
     }
+    this.exemplarLibrary.syncFromRuns(this.store.getAdaptionRuns());
+    return this.exemplarLibrary.getApprovedExemplars();
+  }
 
-    return exemplars;
+  /**
+   * Returns metadata about the active exemplar library.
+   */
+  public getExemplarLibraryMetadata(): ExemplarLibraryMetadata {
+    return this.exemplarLibrary.getMetadata();
+  }
+
+  /**
+   * Toggles whether Adaption approved exemplars are actively injected into the analysis prompt.
+   */
+  public toggleExemplars(enabled: boolean): ExemplarLibraryMetadata {
+    this.exemplarLibrary.setEnabled(enabled);
+    return this.exemplarLibrary.getMetadata();
+  }
+
+  /**
+   * Runs an honest, empirical comparison between baseline and Adaption-enhanced analysis.
+   */
+  public async evaluateComparison(options: RunEvaluationOptions = {}): Promise<AdaptionEvaluationComparison> {
+    return this.evaluationService.evaluateComparison(options);
+  }
+
+  /**
+   * Returns the most recent persisted evaluation comparison.
+   */
+  public getLatestEvaluation(): AdaptionEvaluationComparison | null {
+    return this.evaluationService.getLatestEvaluation();
   }
 
   /**

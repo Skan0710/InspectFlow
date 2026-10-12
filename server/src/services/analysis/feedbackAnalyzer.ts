@@ -14,23 +14,50 @@ import {
   calculateUrgency,
 } from './validator.js';
 import { FeedbackStore } from '../feedbackStore.js';
+import { ExemplarLibrary } from '../adaption/exemplarLibrary.js';
 
 export class FeedbackAnalyzer {
   private provider: AIProvider;
   private store: FeedbackStore;
+  private exemplarLibrary: ExemplarLibrary;
 
-  constructor(provider?: AIProvider, store?: FeedbackStore) {
+  constructor(
+    provider?: AIProvider,
+    store?: FeedbackStore,
+    exemplarLibrary?: ExemplarLibrary
+  ) {
     this.provider = provider || getAIProvider();
     this.store = store || FeedbackStore.getInstance();
+    this.exemplarLibrary = exemplarLibrary || ExemplarLibrary.getInstance();
   }
 
   /**
    * Analyzes an individual feedback review without modifying the original feedback.
+   * If approved Adaption exemplars are available and enabled, injects them as few-shot contextual patterns.
+   * Seamlessly falls back to the baseline zero-shot prompt when no approved exemplars exist.
    */
   public async analyzeReview(
-    input: FeedbackAnalysisInput
+    input: FeedbackAnalysisInput,
+    options?: { useExemplars?: boolean }
   ): Promise<FeedbackAnalysisResult> {
-    const prompt = buildFeedbackAnalysisPrompt(input.review, input.category);
+    const shouldUseExemplars =
+      options?.useExemplars !== false &&
+      this.exemplarLibrary.getMetadata().isEnabled;
+
+    const exemplars = shouldUseExemplars
+      ? this.exemplarLibrary.getApprovedExemplars(input.category)
+      : [];
+
+    const isAdaptionEnhanced = exemplars.length > 0;
+    const exemplarLibraryVersion = isAdaptionEnhanced
+      ? this.exemplarLibrary.getVersion()
+      : undefined;
+
+    const promptVersion = isAdaptionEnhanced
+      ? `${PROMPT_VERSION}+adaption-${exemplarLibraryVersion}`
+      : PROMPT_VERSION;
+
+    const prompt = buildFeedbackAnalysisPrompt(input.review, input.category, exemplars);
 
     const response = await this.provider.generateStructured<RawAnalysisModelOutput>({
       prompt,
@@ -64,7 +91,9 @@ export class FeedbackAnalyzer {
       explanation: output.explanation,
       evidencePhrases: output.evidence_phrases || [],
       modelVersion: this.provider.model,
-      promptVersion: PROMPT_VERSION,
+      promptVersion,
+      exemplarLibraryVersion,
+      isAdaptionEnhanced,
       analyzedAt,
     };
   }
@@ -74,9 +103,10 @@ export class FeedbackAnalyzer {
    * NEVER alters or modifies the original feedback record.
    */
   public async analyzeAndStore(
-    input: FeedbackAnalysisInput
+    input: FeedbackAnalysisInput,
+    options?: { useExemplars?: boolean }
   ): Promise<FeedbackAnalysisRecord> {
-    const result = await this.analyzeReview(input);
+    const result = await this.analyzeReview(input, options);
 
     const record: FeedbackAnalysisRecord = {
       id: crypto.randomUUID(),
@@ -94,6 +124,8 @@ export class FeedbackAnalyzer {
       confidenceScore: result.confidence,
       modelVersion: `${result.modelVersion}:${result.promptVersion}`,
       promptVersion: result.promptVersion,
+      exemplarLibraryVersion: result.exemplarLibraryVersion,
+      isAdaptionEnhanced: result.isAdaptionEnhanced,
       analyzedAt: result.analyzedAt,
       createdAt: result.analyzedAt,
       updatedAt: result.analyzedAt,
@@ -105,3 +137,4 @@ export class FeedbackAnalyzer {
     return record;
   }
 }
+
