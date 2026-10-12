@@ -5,7 +5,7 @@ import { Badge } from '../ui/Badge';
 
 export const ProductFooter: React.FC = () => {
   return (
-    <footer className="mt-16 border-t border-slate-200/80 bg-white/50 backdrop-blur-xs py-8 text-slate-500 text-xs">
+    <footer className="mt-16 border-t border-slate-200/80 bg-white/50 backdrop-blur-xs pt-8 pb-24 text-slate-500 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">

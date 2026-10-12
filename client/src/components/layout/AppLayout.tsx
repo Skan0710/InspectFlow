@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { TopNavbar } from './TopNavbar';
 import { ProductFooter } from './ProductFooter';
+import { ChatCopilot } from '../chat/ChatCopilot';
 
 export const AppLayout: React.FC = () => {
   const { pathname } = useLocation();
@@ -15,6 +16,7 @@ export const AppLayout: React.FC = () => {
         <Outlet />
       </main>
       <ProductFooter />
+      <ChatCopilot />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import type { AnalyticsFilterParams, AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
+import type { ChatHistoryTurn, ChatResponse } from '../types/chat';
 
 export async function fetchAnalyticsMetrics(
   filters: AnalyticsFilterParams = {}
@@ -164,3 +165,20 @@ export async function deleteReport(id: string): Promise<void> {
   }
 }
 
+export async function sendChatMessage(
+  message: string,
+  history: ChatHistoryTurn[],
+  signal?: AbortSignal
+): Promise<ChatResponse> {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+    signal,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `The assistant could not respond (HTTP ${res.status})`);
+  }
+  return res.json();
+}
