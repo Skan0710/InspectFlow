@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { FeedbackStore } from '../services/feedbackStore.js';
 import { IssueClusteringService } from '../services/clustering/clusteringService.js';
 import type { ClusteringOptions } from '../services/clustering/types.js';
+import type { IssueTrackingRecord } from '../types/issues.js';
 
 const router = Router();
 const store = FeedbackStore.getInstance();
@@ -101,7 +102,7 @@ router.get('/', (req: Request, res: Response) => {
       search?: string;
     };
 
-    let clusters = [];
+    let clusters: IssueTrackingRecord[] = [];
     try {
       clusters = store.getAllIssues({ category, priority, search }) || [];
     } catch (storeErr) {

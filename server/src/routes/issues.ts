@@ -5,6 +5,7 @@ import {
   VALID_ISSUE_PRIORITIES,
   type IssueStatus,
   type IssuePriority,
+  type IssueTrackingRecord,
 } from '../types/issues.js';
 
 const router = Router();
@@ -62,7 +63,7 @@ router.get('/', (req: Request, res: Response) => {
       }
     }
 
-    let issues = [];
+    let issues: IssueTrackingRecord[] = [];
     try {
       issues = store.getAllIssues({
         status,
@@ -80,7 +81,7 @@ router.get('/', (req: Request, res: Response) => {
     }
 
     // Compute status counts across all issues
-    let allIssues = [];
+    let allIssues: IssueTrackingRecord[] = [];
     try {
       allIssues = store.getAllIssues() || [];
     } catch {
