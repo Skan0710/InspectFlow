@@ -90,14 +90,16 @@ export class IssueClusteringService {
     const uniqueGroupsMap: Map<string, UniqueGroup> = new Map();
 
     for (const item of clusterableItems) {
-      const normalized = item.text.trim().toLowerCase().replace(/\s+/g, ' ');
+      const text = item.text || '';
+      const normalized = text.trim().toLowerCase().replace(/\s+/g, ' ');
       // Key by normalized text and category
-      const groupKey = `${item.category}:::${normalized}`;
+      const cat = item.category || 'Product Feedback';
+      const groupKey = `${cat}:::${normalized}`;
 
       if (!uniqueGroupsMap.has(groupKey)) {
         uniqueGroupsMap.set(groupKey, {
           normalizedText: normalized,
-          category: item.category,
+          category: cat,
           items: [item],
           representativeItem: item,
         });
@@ -318,11 +320,11 @@ export class IssueClusteringService {
     // Determine predominant category (keeping category separate from AI issue topic)
     const categoryCounts: Map<string, number> = new Map();
     for (const item of allItems) {
-      categoryCounts.set(item.category, (categoryCounts.get(item.category) || 0) + 1);
+      const cat = item.category || 'Product Feedback';
+      categoryCounts.set(cat, (categoryCounts.get(cat) || 0) + 1);
     }
-    const predominantCategory = Array.from(categoryCounts.entries()).sort(
-      (a, b) => b[1] - a[1]
-    )[0][0];
+    const predominantCategory =
+      Array.from(categoryCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Product Feedback';
 
     // Gather AI analysis primary topics if available
     const primaryTopics: string[] = [];
@@ -360,7 +362,7 @@ export class IssueClusteringService {
     }
 
     // Extract salient phrases from review texts
-    const textSamples = groups.map((g) => g.representativeItem.text);
+    const textSamples = groups.map((g) => g.representativeItem?.text || '').filter(Boolean);
     const salientPhrases = extractClusterSalientPhrases(textSamples);
 
     // Generate concise human-readable issue title
@@ -386,14 +388,15 @@ export class IssueClusteringService {
     for (let i = 0; i < Math.min(3, sortedGroups.length); i++) {
       const g = sortedGroups[i];
       const rep = g.representativeItem;
-      const quote = rep.text.length > 200 ? `${rep.text.slice(0, 197)}...` : rep.text;
+      const repText = rep?.text || '';
+      const quote = repText.length > 200 ? `${repText.slice(0, 197)}...` : repText;
 
       representativeExamples.push({
-        feedbackId: rep.id,
+        feedbackId: rep?.id || crypto.randomUUID(),
         quote,
         relevanceScore: Math.max(0.75, Math.min(0.98, 0.85 + (i === 0 ? 0.1 : 0))),
-        category: rep.category,
-        source: rep.source || 'Customer Feedback',
+        category: rep?.category || predominantCategory,
+        source: rep?.source || 'Customer Feedback',
       });
     }
 

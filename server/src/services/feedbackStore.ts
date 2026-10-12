@@ -760,7 +760,7 @@ export class FeedbackStore {
       const targetSentiment = params.sentiment.toLowerCase().trim();
       filtered = filtered.filter((r) => {
         const analysis = this.analyses.get(r.id);
-        return Boolean(analysis && analysis.sentiment.toLowerCase().trim() === targetSentiment);
+        return Boolean(analysis && (analysis.sentiment || '').toLowerCase().trim() === targetSentiment);
       });
     }
 
@@ -781,11 +781,11 @@ export class FeedbackStore {
       filtered = filtered.filter((r) => {
         const analysis = this.analyses.get(r.id);
         if (!analysis) return false;
-        if (analysis.primaryTopic && analysis.primaryTopic.toLowerCase().includes(targetTopic)) {
+        if (analysis.primaryTopic && (analysis.primaryTopic || '').toLowerCase().includes(targetTopic)) {
           return true;
         }
         if (Array.isArray(analysis.topics)) {
-          return analysis.topics.some((t) => t.toLowerCase().includes(targetTopic));
+          return analysis.topics.some((t) => typeof t === 'string' && t.toLowerCase().includes(targetTopic));
         }
         return false;
       });
@@ -795,16 +795,16 @@ export class FeedbackStore {
       const q = params.search.toLowerCase().trim();
       filtered = filtered.filter((r) => {
         if (
-          r.review.toLowerCase().includes(q) ||
-          r.category.toLowerCase().includes(q) ||
-          r.source.toLowerCase().includes(q)
+          (r.review || '').toLowerCase().includes(q) ||
+          (r.category || '').toLowerCase().includes(q) ||
+          (r.source || '').toLowerCase().includes(q)
         ) {
           return true;
         }
         const analysis = this.analyses.get(r.id);
         if (analysis) {
-          if (analysis.summary && analysis.summary.toLowerCase().includes(q)) return true;
-          if (analysis.primaryTopic && analysis.primaryTopic.toLowerCase().includes(q)) return true;
+          if (analysis.summary && (analysis.summary || '').toLowerCase().includes(q)) return true;
+          if (analysis.primaryTopic && (analysis.primaryTopic || '').toLowerCase().includes(q)) return true;
         }
         return false;
       });
@@ -819,10 +819,10 @@ export class FeedbackStore {
         return ((a.rowNumber || 0) - (b.rowNumber || 0)) * sortOrder;
       }
       if (sortBy === 'importedAt') {
-        return (new Date(a.importedAt).getTime() - new Date(b.importedAt).getTime()) * sortOrder;
+        return (new Date(a.importedAt || 0).getTime() - new Date(b.importedAt || 0).getTime()) * sortOrder;
       }
       if (sortBy === 'category') {
-        return a.category.localeCompare(b.category) * sortOrder;
+        return (a.category || '').localeCompare(b.category || '') * sortOrder;
       }
       if (sortBy === 'severity') {
         const anA = this.analyses.get(a.id);
@@ -1116,13 +1116,13 @@ export class FeedbackStore {
     // 4. Category filter
     if (params?.category && params.category !== 'all') {
       const cat = params.category.toLowerCase().trim();
-      list = list.filter((c) => c.category.toLowerCase().trim() === cat);
+      list = list.filter((c) => (c.category || '').toLowerCase().trim() === cat);
     }
 
     // 5. Priority filter
     if (params?.priority && params.priority !== 'all') {
       const prio = params.priority.toLowerCase().trim();
-      list = list.filter((c) => c.priority.toLowerCase().trim() === prio);
+      list = list.filter((c) => (c.priority || '').toLowerCase().trim() === prio);
     }
 
     // 6. Text search filter
@@ -1130,10 +1130,10 @@ export class FeedbackStore {
       const q = params.search.toLowerCase().trim();
       list = list.filter(
         (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.description.toLowerCase().includes(q) ||
-          c.issueCode.toLowerCase().includes(q) ||
-          c.category.toLowerCase().includes(q) ||
+          (c.title || '').toLowerCase().includes(q) ||
+          (c.description || '').toLowerCase().includes(q) ||
+          (c.issueCode || '').toLowerCase().includes(q) ||
+          (c.category || '').toLowerCase().includes(q) ||
           (c.assignee && c.assignee.toLowerCase().includes(q))
       );
     }
@@ -1148,25 +1148,25 @@ export class FeedbackStore {
         const scoreA = Number(a.metadata?.priorityScore) || 0;
         const scoreB = Number(b.metadata?.priorityScore) || 0;
         if (scoreA !== scoreB) return (scoreA - scoreB) * multiplier;
-        return (a.feedbackCount - b.feedbackCount) * multiplier;
+        return ((a.feedbackCount || 0) - (b.feedbackCount || 0)) * multiplier;
       }
       if (sortField === 'feedbackCount') {
-        return (a.feedbackCount - b.feedbackCount) * multiplier;
+        return ((a.feedbackCount || 0) - (b.feedbackCount || 0)) * multiplier;
       }
       if (sortField === 'statusUpdatedAt') {
-        const dateA = new Date(a.statusUpdatedAt || a.updatedAt || a.createdAt).getTime();
-        const dateB = new Date(b.statusUpdatedAt || b.updatedAt || b.createdAt).getTime();
+        const dateA = new Date(a.statusUpdatedAt || a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.statusUpdatedAt || b.updatedAt || b.createdAt || 0).getTime();
         return (dateA - dateB) * multiplier;
       }
       if (sortField === 'createdAt') {
-        const dateA = new Date(a.createdAt).getTime();
-        const dateB = new Date(b.createdAt).getTime();
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
         return (dateA - dateB) * multiplier;
       }
       if (sortField === 'title') {
-        return a.title.localeCompare(b.title) * multiplier;
+        return (a.title || '').localeCompare(b.title || '') * multiplier;
       }
-      return (b.feedbackCount - a.feedbackCount) * multiplier;
+      return ((b.feedbackCount || 0) - (a.feedbackCount || 0)) * multiplier;
     });
   }
 

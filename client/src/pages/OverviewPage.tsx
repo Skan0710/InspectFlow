@@ -228,13 +228,13 @@ export const OverviewPage: React.FC = () => {
           </p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 justify-start sm:justify-end">
           {/* Quick Filters */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-11 py-2 text-base font-medium rounded-xl border-white/20 bg-white/10"
+              className="h-10 py-1.5 px-3 text-sm font-medium rounded-xl border-white/20 bg-white/10 text-white min-w-[145px]"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -246,7 +246,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedDatasetType}
               onChange={(e) => setSelectedDatasetType(e.target.value)}
-              className="h-11 py-2 text-base font-medium rounded-xl border-white/20 bg-white/10"
+              className="h-10 py-1.5 px-3 text-sm font-medium rounded-xl border-white/20 bg-white/10 text-white min-w-[140px]"
             >
               <option value="all">All Provenance</option>
               <option value="genuine_import">Genuine CSV Only</option>
@@ -261,17 +261,17 @@ export const OverviewPage: React.FC = () => {
             isLoading={isLoading}
             leftIcon={<RefreshCw className="h-4 w-4" />}
             title="Refresh dashboard metrics"
-            className="text-base font-semibold px-4"
+            className="text-sm font-semibold px-3.5 h-10 border-white/20 text-white hover:bg-white/10"
           >
             Refresh
           </Button>
 
-          <Link to="/feedback">
+          <Link to="/feedback" className="shrink-0">
             <Button
               variant="primary"
               size="md"
               leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-              className="cta-focus-glow text-base font-bold px-5 shadow-lg shadow-indigo-500/35 ring-1 ring-white/30"
+              className="cta-focus-glow text-sm font-bold px-4 h-10 shadow-lg shadow-indigo-500/35 ring-1 ring-white/30"
             >
               Feedback Explorer
             </Button>

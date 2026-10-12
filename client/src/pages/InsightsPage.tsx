@@ -416,14 +416,14 @@ export const InsightsPage: React.FC = () => {
             Semantic issue clustering, deterministic triage rankings, and AI-driven solutions.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
           <Button 
             variant="outline" 
             size="md" 
             leftIcon={<Calculator className={`h-4 w-4 ${isRecalculating ? 'animate-spin' : ''}`} />}
             onClick={handleRecalculateScores}
             disabled={isRecalculating || isClustering}
-            className="font-medium text-sm"
+            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap"
           >
             {isRecalculating ? 'Recalculating...' : 'Recalculate Scores'}
           </Button>
@@ -433,7 +433,7 @@ export const InsightsPage: React.FC = () => {
             leftIcon={<RotateCw className={`h-4 w-4 ${isClustering ? 'animate-spin' : ''}`} />}
             onClick={handleRunClustering}
             disabled={isClustering || isRecalculating}
-            className="font-medium text-sm"
+            className="font-semibold text-sm h-10 px-3.5 whitespace-nowrap"
           >
             {isClustering ? 'Clustering...' : 'Re-run Clustering'}
           </Button>
@@ -443,9 +443,9 @@ export const InsightsPage: React.FC = () => {
             leftIcon={<Sparkles className={`h-4 w-4 ${isBatchGenerating ? 'animate-spin' : ''}`} />}
             onClick={handleGenerateAllHighPriority}
             disabled={isBatchGenerating || isClustering || isRecalculating}
-            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
+            className="cta-focus-glow font-bold text-sm h-10 px-4 whitespace-nowrap shadow-lg shadow-indigo-500/25"
           >
-            {isBatchGenerating ? 'Generating Recs...' : 'Generate Recommendations'}
+            {isBatchGenerating ? 'Generating...' : 'Generate Recommendations'}
           </Button>
         </div>
       </div>
@@ -521,10 +521,11 @@ export const InsightsPage: React.FC = () => {
               leftIcon={<Search className="h-4 w-4 text-slate-400" />}
             />
           </div>
-          <div className="w-36">
+          <div className="w-auto min-w-[155px]">
             <Select 
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
+              className="text-sm font-medium"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -533,10 +534,11 @@ export const InsightsPage: React.FC = () => {
               <option value="Fraud and Scam">Fraud and Scam</option>
             </Select>
           </div>
-          <div className="w-32">
+          <div className="w-auto min-w-[130px]">
             <Select 
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
+              className="text-sm font-medium"
             >
               <option value="all">All Priority</option>
               <option value="critical">Critical</option>

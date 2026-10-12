@@ -27,20 +27,25 @@ export class AnalyticsService {
    * Guarantees consistent filter semantics with paginated feedback results.
    */
   public async getMetrics(filters: AnalyticsFilterParams = {}): Promise<AnalyticsMetricsResponse> {
-    // Check if live PostgreSQL pool can be used
-    const dbConfig = getDatabaseConfig();
-    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
-      try {
-        const poolMetrics = await this.getMetricsFromDatabase(filters);
-        if (poolMetrics) {
-          return poolMetrics;
+    try {
+      // Check if live PostgreSQL pool can be used
+      const dbConfig = getDatabaseConfig();
+      if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+        try {
+          const poolMetrics = await this.getMetricsFromDatabase(filters);
+          if (poolMetrics) {
+            return poolMetrics;
+          }
+        } catch (err) {
+          console.warn('[AnalyticsService] DB aggregation query failed, falling back to store cache:', err);
         }
-      } catch (err) {
-        console.warn('[AnalyticsService] DB aggregation query failed, falling back to store cache:', err);
       }
-    }
 
-    return this.getMetricsFromStore(filters);
+      return this.getMetricsFromStore(filters);
+    } catch (err) {
+      console.error('[AnalyticsService] Unexpected error computing metrics, returning safe fallback:', err);
+      return this.getEmptyFallbackMetrics(filters);
+    }
   }
 
   /**
@@ -201,7 +206,8 @@ export class AnalyticsService {
       if (analysis.sentiment === 'negative') {
         entry.negativeCount++;
       }
-      entry.categories[record.category] = (entry.categories[record.category] || 0) + 1;
+      const catKey = record.category || 'Product Feedback';
+      entry.categories[catKey] = (entry.categories[catKey] || 0) + 1;
     }
 
     const issueFrequencies: IssueFrequencyMetric[] = Array.from(topicMap.entries())
@@ -231,7 +237,7 @@ export class AnalyticsService {
     if (filters.topic && filters.topic !== 'all') {
       const topLower = filters.topic.toLowerCase().trim();
       issuesList = issuesList.filter(
-        (i) => i.title.toLowerCase().includes(topLower) || i.category.toLowerCase().includes(topLower)
+        (i) => (i.title || '').toLowerCase().includes(topLower) || (i.category || '').toLowerCase().includes(topLower)
       );
     }
 
@@ -293,15 +299,16 @@ export class AnalyticsService {
     // 7. Duplicate-text statistics across matching records
     const textFreqMap = new Map<string, { count: number; category: string; fullSnippet: string }>();
     for (const r of records) {
-      const normalized = r.review.trim().toLowerCase();
+      const reviewText = (r.review || '').trim();
+      const normalized = reviewText.toLowerCase();
       const existing = textFreqMap.get(normalized);
       if (existing) {
         existing.count++;
       } else {
         textFreqMap.set(normalized, {
           count: 1,
-          category: r.category,
-          fullSnippet: r.review.length > 120 ? `${r.review.slice(0, 117)}...` : r.review,
+          category: r.category || 'Product Feedback',
+          fullSnippet: reviewText.length > 120 ? `${reviewText.slice(0, 117)}...` : reviewText,
         });
       }
     }
@@ -473,5 +480,53 @@ export class AnalyticsService {
       : null;
 
     return storeFallback;
+  }
+
+  private getEmptyFallbackMetrics(filters: AnalyticsFilterParams): AnalyticsMetricsResponse {
+    return {
+      filtersApplied: {
+        category: filters.category || 'all',
+        sentiment: filters.sentiment || 'all',
+        topic: filters.topic || 'all',
+        analysisStatus: filters.analysisStatus || 'all',
+        severity: filters.severity ?? 'all',
+        datasetType: filters.datasetType || 'all',
+        search: filters.search || '',
+      },
+      summary: {
+        totalFeedback: 0,
+        analyzedFeedback: 0,
+        pendingAnalysis: 0,
+        analysisCoveragePercent: 0,
+        hasAnalysisRun: false,
+        isEmpty: true,
+        statusMessage: 'No feedback records available or matching the specified filters.',
+      },
+      sentiment: {
+        denominator: 0,
+        counts: { positive: 0, neutral: 0, negative: 0, mixed: 0 },
+        percentages: { positive: 0, neutral: 0, negative: 0, mixed: 0 },
+        averageSentimentScore: null,
+        averageSeverity: null,
+      },
+      categories: [],
+      issueFrequencies: [],
+      priorityRankings: {
+        issues: [],
+        tierSummary: { critical: 0, high: 0, medium: 0, low: 0 },
+        openIssuesCount: 0,
+        statusSummary: { open: 0, in_progress: 0, resolved: 0, dismissed: 0 },
+        hasScoredIssues: false,
+        disclaimer: 'Priority scores are deterministic heuristics calculated for triage ranking and do not represent validated financial or legal risk.',
+      },
+      duplicateStats: {
+        totalFeedback: 0,
+        uniqueReviewTexts: 0,
+        duplicateFeedbackCount: 0,
+        duplicateRatio: 0,
+        topRepeatedReviews: [],
+      },
+      calculatedAt: new Date().toISOString(),
+    };
   }
 }
