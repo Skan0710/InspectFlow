@@ -191,6 +191,7 @@ export const TopNavbar: React.FC = () => {
                 <NavLink
                   to={path}
                   end={path === '/'}
+                  onClick={() => setMenuOpen(false)}
                   className={({ isActive }) =>
                     `${mobileLink} ${
                       isActive ? 'bg-white/15 text-white' : 'text-indigo-50 hover:bg-white/10 hover:text-white'
@@ -203,6 +204,44 @@ export const TopNavbar: React.FC = () => {
               </li>
             ))}
           </ul>
+
+          <div className="mx-auto mt-3 max-w-7xl border-t border-white/10 pt-3">
+            {signedIn ? (
+              <div className="flex items-center justify-between gap-3 px-1">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${ACCENTS[profile.accent]} text-xs font-bold text-indigo-950`}>
+                    {initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{profile.name}</p>
+                    <p className="truncate text-xs text-indigo-200">{profile.email || profile.role}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void signOut();
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/20"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Button
+                size="md"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openSignIn();
+                }}
+                className="cta-focus-glow w-full py-2.5 text-base font-bold shadow-lg shadow-indigo-500/30"
+              >
+                Sign in
+              </Button>
+            )}
+          </div>
         </nav>
       )}
     </header>
