@@ -19,7 +19,6 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { IssueDetailModal } from '../components/issues/IssueDetailModal';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
-import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
 import type { ActionIssue, IssueStatus, StatusSummary } from '../types/issues';
 import type { IssueRecommendation } from '../types/recommendations';
@@ -193,9 +192,7 @@ export const ActionCenterPage: React.FC = () => {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <span>Action</span>
-            <FlipText className="text-indigo-300">
-              Center
-            </FlipText>
+            <span className="text-indigo-300">Center</span>
           </h2>
                   </div>
         <div className="flex items-center gap-2.5">
@@ -249,7 +246,7 @@ export const ActionCenterPage: React.FC = () => {
         <div className="w-full sm:w-72">
           <Input
             type="text"
-            placeholder="Search by issue title, code, or owner..."
+            placeholder="Search issues"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             leftIcon={<Search className="h-4 w-4 text-slate-400" />}

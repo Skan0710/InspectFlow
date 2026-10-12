@@ -23,7 +23,6 @@ import { Input } from '../components/ui/Input';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Link } from 'react-router-dom';
 import { RecommendationModal } from '../components/recommendations/RecommendationModal';
-import { FlipText } from '../components/ui/flip-text';
 import { StatsCounter } from '../components/ui/stats-counter';
 import type { IssueRecommendation } from '../types/recommendations';
 
@@ -411,9 +410,7 @@ export const InsightsPage: React.FC = () => {
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
             <span>AI</span>
-            <FlipText className="text-indigo-300">
-              Insights
-            </FlipText>
+            <span className="text-indigo-300">Insights</span>
           </h2>
                   </div>
         <div className="flex flex-wrap items-center gap-2.5">

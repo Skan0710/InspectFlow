@@ -13,8 +13,6 @@ import {
   BarChart3,
   Layers,
   ShieldCheck,
-  TrendingDown,
-  TrendingUp,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
@@ -242,13 +240,6 @@ export const ReportsPage: React.FC = () => {
                       <Badge variant="indigo" size="sm">
                         {report.format === 'both' ? 'PDF + CSV' : report.format.toUpperCase()}
                       </Badge>
-                      <span className="font-mono text-xs text-slate-500 font-bold">
-                        {report.reportCode}
-                      </span>
-                      <Badge variant="neutral" size="sm">
-                        {report.reportType.replace(/_/g, ' ').toUpperCase()}
-                      </Badge>
-                      <span className="text-slate-400">•</span>
                       <span className="text-xs text-slate-500 flex items-center gap-1 font-mono">
                         <Clock className="h-3 w-3" />
                         {new Date(report.generatedAt).toLocaleDateString()} at{' '}
@@ -262,70 +253,16 @@ export const ReportsPage: React.FC = () => {
 
                 </CardHeader>
 
-                <CardContent className="pt-1 pb-3 text-xs">
-                  {/* Executive Metric Highlights */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 rounded-lg bg-slate-50 p-3 border border-slate-100">
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                        Dataset Scope
-                      </div>
-                      <div className="font-bold text-slate-800 text-sm">
-                        {p.datasetScope.totalFeedback.toLocaleString()} Reviews
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {p.datasetScope.analysisCoveragePercent}% analyzed
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                        Net Sentiment
-                      </div>
-                      <div className="font-bold text-slate-800 text-sm flex items-center gap-1">
-                        {p.sentimentDistribution.netSentimentScore >= 0 ? (
-                          <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-                        ) : (
-                          <TrendingDown className="h-3.5 w-3.5 text-red-600" />
-                        )}
-                        <span className={p.sentimentDistribution.netSentimentScore >= 0 ? 'text-emerald-700' : 'text-red-700'}>
-                          {p.sentimentDistribution.netSentimentScore > 0 ? '+' : ''}
-                          {p.sentimentDistribution.netSentimentScore}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {p.sentimentDistribution.positive.percentage}% pos • {p.sentimentDistribution.negative.percentage}% neg
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                        Top Operational Issue
-                      </div>
-                      <div className="font-bold text-slate-800 text-sm truncate">
-                        {p.topPriorityIssues[0]?.title || 'No issues identified'}
-                      </div>
-                      <div className="text-[11px] text-indigo-600 font-medium">
-                        {p.topPriorityIssues[0]
-                          ? `Priority ${p.topPriorityIssues[0].priorityScore}/100 • ${p.topPriorityIssues[0].frequency} mentions`
-                          : 'Zero open issues'}
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
-                        Action Center
-                      </div>
-                      <div className="font-bold text-slate-800 text-sm">
-                        {p.issueStatusSummary.open} Open / {p.issueStatusSummary.resolved} Resolved
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {p.issueStatusSummary.in_progress} in progress
-                      </div>
-                    </div>
-                  </div>
+                <CardContent className="pt-1 pb-3">
+                  <p className="text-base text-slate-600">
+                    {p.datasetScope.totalFeedback.toLocaleString()} reviews · {p.datasetScope.analysisCoveragePercent}% analyzed
+                    {' · '}Net sentiment {p.sentimentDistribution.netSentimentScore > 0 ? '+' : ''}
+                    {p.sentimentDistribution.netSentimentScore}
+                    {p.topPriorityIssues[0] ? ` · Top issue: ${p.topPriorityIssues[0].title}` : ''}
+                  </p>
                 </CardContent>
 
-                <CardFooter className="py-2.5 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <CardFooter className="py-2.5 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-[11px] text-slate-400 font-mono">
                     {p.metadata.applicableDateRange.isSnapshot ? (
                       <span className="flex items-center gap-1 text-amber-700">
