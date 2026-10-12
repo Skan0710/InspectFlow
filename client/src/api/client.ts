@@ -112,3 +112,52 @@ export async function submitManualFeedback(
   }
   return data;
 }
+
+import type { ReportRecord, CreateReportRequest } from '../types/reports';
+
+export async function fetchReports(options: { type?: string; status?: string } = {}): Promise<ReportRecord[]> {
+  const params = new URLSearchParams();
+  if (options.type && options.type !== 'all') params.append('type', options.type);
+  if (options.status && options.status !== 'all') params.append('status', options.status);
+  const url = params.toString() ? `/api/reports?${params.toString()}` : '/api/reports';
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Failed to fetch reports (HTTP ${res.status})`);
+  }
+  const json = await res.json();
+  return json.data || [];
+}
+
+export async function fetchReportById(id: string): Promise<ReportRecord> {
+  const res = await fetch(`/api/reports/${id}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Failed to fetch report (HTTP ${res.status})`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function generateReport(payload: CreateReportRequest): Promise<ReportRecord> {
+  const res = await fetch('/api/reports/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Failed to generate report (HTTP ${res.status})`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || `Failed to delete report (HTTP ${res.status})`);
+  }
+}
+

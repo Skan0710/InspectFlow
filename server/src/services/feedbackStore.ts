@@ -12,6 +12,7 @@ import { getDatabaseConfig } from '../db/config.js';
 import { getPgPool } from '../db/client.js';
 
 import type { AdaptionRunRecord } from './adaption/types.js';
+import type { ReportRecord } from '../types/reports.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ const ISSUES_FILE = path.join(DATA_DIR, 'issues.json');
 const ISSUE_FEEDBACK_FILE = path.join(DATA_DIR, 'issue_feedback.json');
 const CLUSTERING_RUNS_FILE = path.join(DATA_DIR, 'clustering_runs.json');
 const ADAPTION_RUNS_FILE = path.join(DATA_DIR, 'adaption_runs.json');
+const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -43,6 +45,7 @@ export class FeedbackStore {
   private clusteringRuns: ClusteringResult[] = [];
   private recommendations: Map<string, IssueRecommendation> = new Map();
   private adaptionRuns: Map<string, AdaptionRunRecord> = new Map();
+  private reports: Map<string, ReportRecord> = new Map();
   private scoringService = new PriorityScoringService();
 
   private constructor() {
@@ -155,6 +158,13 @@ export class FeedbackStore {
           this.adaptionRuns.set(item.id, item);
         }
       }
+
+      const reportsList = safeParse<ReportRecord[]>(REPORTS_FILE);
+      if (reportsList) {
+        for (const item of reportsList) {
+          this.reports.set(item.id, item);
+        }
+      }
     } catch (err) {
       console.warn('[FeedbackStore] Failed to load state from disk:', err);
     }
@@ -177,6 +187,7 @@ export class FeedbackStore {
       fs.writeFileSync(ISSUE_FEEDBACK_FILE, JSON.stringify(allLinks), 'utf8');
       fs.writeFileSync(CLUSTERING_RUNS_FILE, JSON.stringify(this.clusteringRuns), 'utf8');
       fs.writeFileSync(ADAPTION_RUNS_FILE, JSON.stringify(Array.from(this.adaptionRuns.values())), 'utf8');
+      fs.writeFileSync(REPORTS_FILE, JSON.stringify(Array.from(this.reports.values())), 'utf8');
     } catch (err) {
       console.error('[FeedbackStore] Failed to persist data to disk:', err);
     }
@@ -1529,5 +1540,93 @@ export class FeedbackStore {
   public getAdaptionRuns(): AdaptionRunRecord[] {
     const runs = Array.from(this.adaptionRuns.values());
     return runs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public async saveReport(report: ReportRecord): Promise<void> {
+    this.reports.set(report.id, report);
+    this.flushToDisk();
+
+    const dbConfig = getDatabaseConfig();
+    if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+      try {
+        const pool = getPgPool();
+        const sql = `
+          INSERT INTO reports (
+            id, report_code, title, description, report_type, status, cadence, format,
+            content_payload, storage_path, recipients, generated_at, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            status = EXCLUDED.status,
+            cadence = EXCLUDED.cadence,
+            format = EXCLUDED.format,
+            content_payload = EXCLUDED.content_payload,
+            storage_path = EXCLUDED.storage_path,
+            recipients = EXCLUDED.recipients,
+            generated_at = EXCLUDED.generated_at,
+            updated_at = EXCLUDED.updated_at;
+        `;
+        await pool.query(sql, [
+          report.id,
+          report.reportCode,
+          report.title,
+          report.description || null,
+          report.reportType,
+          report.status,
+          report.cadence || null,
+          report.format,
+          JSON.stringify(report.contentPayload),
+          report.storagePath || null,
+          JSON.stringify(report.recipients || []),
+          report.generatedAt,
+          report.createdAt,
+          report.updatedAt,
+        ]);
+      } catch (err) {
+        console.warn('[FeedbackStore] DB persistence for reports skipped/failed:', err);
+      }
+    }
+  }
+
+  public getReportById(id: string): ReportRecord | null {
+    return this.reports.get(id) || null;
+  }
+
+  public getReportByCode(code: string): ReportRecord | null {
+    for (const r of this.reports.values()) {
+      if (r.reportCode.toLowerCase() === code.toLowerCase()) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  public getReports(options: { type?: string; status?: string } = {}): ReportRecord[] {
+    let list = Array.from(this.reports.values());
+    if (options.type && options.type !== 'all') {
+      list = list.filter((r) => r.reportType === options.type);
+    }
+    if (options.status && options.status !== 'all') {
+      list = list.filter((r) => r.status === options.status);
+    }
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public async deleteReport(id: string): Promise<boolean> {
+    const existed = this.reports.delete(id);
+    if (existed) {
+      this.flushToDisk();
+      const dbConfig = getDatabaseConfig();
+      if (dbConfig.isConfigured && dbConfig.databaseUrl) {
+        try {
+          const pool = getPgPool();
+          await pool.query(`DELETE FROM reports WHERE id = $1;`, [id]);
+        } catch (err) {
+          console.warn('[FeedbackStore] DB delete for reports failed:', err);
+        }
+      }
+    }
+    return existed;
   }
 }

@@ -14,6 +14,7 @@ import analyticsRoutes from './routes/analytics.js';
 import recommendationRoutes from './routes/recommendations.js';
 import issueRoutes from './routes/issues.js';
 import adaptionRoutes from './routes/adaption.js';
+import reportRoutes from './routes/reports.js';
 
 dotenv.config();
 
@@ -151,6 +152,9 @@ app.use('/api/issues', issueRoutes);
 
 // Adaption Labs Workflow Integration Routes
 app.use('/api/adaption', adaptionRoutes);
+
+// Business Insight Reports & Intelligence Digests Routes
+app.use('/api/reports', reportRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
