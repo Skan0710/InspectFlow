@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RawFeedbackRecord, ImportSummary, DatasetStatus, DatasetOriginType } from '../types/import.js';
@@ -357,12 +358,15 @@ export class FeedbackStore {
         const values: any[] = [];
         const placeholders: string[] = [];
 
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
         chunk.forEach((rec, idx) => {
-          const offset = idx * 6;
+          const offset = idx * 7;
           placeholders.push(
-            `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+            `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`
           );
           values.push(
+            uuidPattern.test(rec.id) ? rec.id : crypto.randomUUID(),
             rec.source,
             rec.contentHash,
             rec.isSample ? 'Demo Fixture Account' : 'BuildBattle Dataset',
@@ -380,14 +384,49 @@ export class FeedbackStore {
         });
 
         const sql = `
-          INSERT INTO feedback (source, external_id, account_name, content, metadata, created_at)
+          INSERT INTO feedback (id, source, external_id, account_name, content, metadata, created_at)
           VALUES ${placeholders.join(', ')}
-          ON CONFLICT (source, external_id) DO NOTHING
+          ON CONFLICT (source, external_id) WHERE external_id IS NOT NULL DO NOTHING
         `;
 
         await pool.query(sql, values);
       } catch (err) {
         console.warn('[FeedbackStore] DB persistence skipped or failed:', err);
+      }
+    }
+  }
+
+  /**
+   * Removes every in-memory record belonging to a batch (used to roll back a failed import so a
+   * partially streamed CSV never leaves orphaned records without a batch summary).
+   */
+  public removeRecordsByBatchId(batchId: string): number {
+    const before = this.records.length;
+    this.records = this.records.filter((r) => r.batchId !== batchId);
+    const removed = before - this.records.length;
+    if (removed > 0) {
+      this.recordHashes = new Set(this.records.map((r) => r.contentHash));
+      this.flushToDisk();
+    }
+    return removed;
+  }
+
+  /**
+   * Drops analyses, issues, links and recommendations that depend on feedback records
+   * which no longer exist, so partial resets cannot leave dangling derived data behind.
+   */
+  private pruneOrphanedDerivedData(removedIds: Set<string>): void {
+    if (removedIds.size === 0) return;
+
+    for (const id of removedIds) {
+      this.analyses.delete(id);
+    }
+
+    for (const [issueId, issue] of Array.from(this.issues.entries())) {
+      if ((issue.memberFeedbackIds || []).some((fid) => removedIds.has(fid))) {
+        this.issues.delete(issueId);
+        this.issueFeedback.delete(issueId);
+        this.recommendations.delete(issueId);
       }
     }
   }
@@ -411,6 +450,10 @@ export class FeedbackStore {
     } else if (scope === 'sample_only') {
       const remaining = this.records.filter((r) => !r.isSample);
       removedCount = initialCount - remaining.length;
+      const keptIds = new Set(remaining.map((r) => r.id));
+      this.pruneOrphanedDerivedData(
+        new Set(this.records.filter((r) => !keptIds.has(r.id)).map((r) => r.id))
+      );
       this.records = remaining;
       this.recordHashes = new Set(remaining.map((r) => r.contentHash));
       for (const [id, batch] of this.batches.entries()) {
@@ -419,6 +462,10 @@ export class FeedbackStore {
     } else if (scope === 'genuine_only') {
       const remaining = this.records.filter((r) => r.isSample);
       removedCount = initialCount - remaining.length;
+      const keptIds = new Set(remaining.map((r) => r.id));
+      this.pruneOrphanedDerivedData(
+        new Set(this.records.filter((r) => !keptIds.has(r.id)).map((r) => r.id))
+      );
       this.records = remaining;
       this.recordHashes = new Set(remaining.map((r) => r.contentHash));
       for (const [id, batch] of this.batches.entries()) {
@@ -839,11 +886,67 @@ export class FeedbackStore {
       this.clusteringRuns = this.clusteringRuns.slice(0, 10);
     }
 
+    // Retire issues produced by earlier runs over the same evaluated scope
+    const scope = result.parameters?.datasetType;
+    const evaluatedIds = new Set(
+      this.records
+        .filter((r) => !scope || scope === 'all' || r.datasetType === scope)
+        .map((r) => r.id)
+    );
+    const memberSignature = (ids: string[]) => [...ids].sort().join('|');
+    const previousBySignature = new Map<string, IssueClusterData>();
+    const retiredIssueIds: string[] = [];
+
+    for (const [issueId, issue] of Array.from(this.issues.entries())) {
+      if ((issue.memberFeedbackIds || []).some((fid) => evaluatedIds.has(fid))) {
+        previousBySignature.set(memberSignature(issue.memberFeedbackIds || []), issue);
+        retiredIssueIds.push(issueId);
+        this.issues.delete(issueId);
+        this.issueFeedback.delete(issueId);
+        this.recommendations.delete(issueId);
+      }
+    }
+
+    // An unchanged cluster keeps its identity and everything users did to it
+    const idRemap = new Map<string, string>();
+    for (const cluster of result.clusters) {
+      const previous = previousBySignature.get(memberSignature(cluster.memberFeedbackIds));
+      if (!previous) continue;
+
+      idRemap.set(cluster.id, previous.id);
+      cluster.id = previous.id;
+      cluster.status = previous.status;
+      cluster.statusUpdatedAt = previous.statusUpdatedAt;
+      cluster.assignee = previous.assignee;
+      cluster.assigneeEmail = previous.assigneeEmail;
+      cluster.isSaved = previous.isSaved;
+      cluster.notes = previous.notes || [];
+      cluster.statusHistory = previous.statusHistory || cluster.statusHistory;
+      cluster.createdAt = previous.createdAt;
+
+      const previousRecommendation = (previous.metadata as any)?.recommendation as
+        | IssueRecommendation
+        | undefined;
+      if (previousRecommendation) {
+        const carried: IssueRecommendation = {
+          ...previousRecommendation,
+          issueId: cluster.id,
+          issueCode: cluster.issueCode,
+          title: cluster.title,
+        };
+        cluster.metadata = { ...cluster.metadata, recommendation: carried };
+        this.recommendations.set(cluster.id, carried);
+      }
+    }
+
     for (const cluster of result.clusters) {
       this.issues.set(cluster.id, cluster);
     }
 
-    for (const link of links) {
+    const remappedLinks = links.map((link) =>
+      idRemap.has(link.issueId) ? { ...link, issueId: idRemap.get(link.issueId)! } : link
+    );
+    for (const link of remappedLinks) {
       const arr = this.issueFeedback.get(link.issueId) || [];
       arr.push(link);
       this.issueFeedback.set(link.issueId, arr);
@@ -858,6 +961,13 @@ export class FeedbackStore {
     if (dbConfig.isConfigured && dbConfig.databaseUrl) {
       try {
         const pool = getPgPool();
+
+        // Remove rows for every retired issue (issue_code is unique, so stale rows would make
+        // each re-clustering insert fail). issue_feedback rows cascade.
+        if (retiredIssueIds.length > 0) {
+          await pool.query('DELETE FROM issues WHERE id::text = ANY($1::text[])', [retiredIssueIds]);
+        }
+
         for (const cluster of result.clusters) {
           const sqlIssue = `
             INSERT INTO issues (
@@ -888,10 +998,10 @@ export class FeedbackStore {
           ]);
         }
 
-        if (links.length > 0) {
+        if (remappedLinks.length > 0) {
           const chunkSize = 200;
-          for (let i = 0; i < links.length; i += chunkSize) {
-            const chunk = links.slice(i, i + chunkSize);
+          for (let i = 0; i < remappedLinks.length; i += chunkSize) {
+            const chunk = remappedLinks.slice(i, i + chunkSize);
             const placeholders: string[] = [];
             const values: any[] = [];
             chunk.forEach((l, idx) => {
@@ -908,6 +1018,12 @@ export class FeedbackStore {
             `;
             await pool.query(sqlLinks, values);
           }
+        }
+
+        // Re-apply user-managed state (assignee, notes, history, saved flag) for reused issues
+        for (const reusedId of idRemap.values()) {
+          const reused = this.issues.get(reusedId);
+          if (reused) await this.persistIssueToDb(reused);
         }
       } catch (err) {
         console.warn('[FeedbackStore] DB persistence for clusters skipped/failed:', err);

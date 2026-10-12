@@ -95,10 +95,10 @@ export const FeedbackImportModal: React.FC<FeedbackImportModalProps> = ({
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.message || 'Import failed with server error');
+        throw new Error(data.message || `Import failed (HTTP ${res.status})`);
       }
 
       setProgressStep('Finalizing batch metrics...');

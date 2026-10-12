@@ -370,6 +370,8 @@ export async function generateReportPdf(report: ReportRecord): Promise<Buffer> {
       const range = doc.bufferedPageRange();
       for (let i = range.start; i < range.start + range.count; i++) {
         doc.switchToPage(i);
+        // The footer sits inside the bottom margin; without this PDFKit auto-adds a page per footer
+        doc.page.margins.bottom = 0;
         doc.strokeColor('#E2E8F0').lineWidth(0.5);
         doc.moveTo(50, doc.page.height - 45).lineTo(50 + pageWidth, doc.page.height - 45).stroke();
 

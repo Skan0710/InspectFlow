@@ -9,6 +9,7 @@ export function sanitizeErrorMessage(message: string): string {
     .replace(/(?:key|api[_-]?key|token)=([a-zA-Z0-9_\-]{8,})/gi, '$1=[REDACTED]')
     .replace(/Bearer\s+([a-zA-Z0-9_\-\.]{8,})/gi, 'Bearer [REDACTED]')
     .replace(/AIza[0-9A-Za-z\-_]{35}/g, '[REDACTED_GEMINI_KEY]')
+    .replace(/sk-ant-[a-zA-Z0-9_\-]{20,}/g, '[REDACTED_ANTHROPIC_KEY]')
     .replace(/sk-[a-zA-Z0-9]{20,}/g, '[REDACTED_OPENAI_KEY]');
 }
 

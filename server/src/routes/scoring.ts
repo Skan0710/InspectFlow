@@ -13,10 +13,52 @@ router.post('/recalculate', async (req: Request, res: Response) => {
   try {
     const { weights, thresholds, defaultSeverity } = req.body || {};
 
+    const isFiniteNonNegative = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0;
     const options: ScoringOptions = {};
-    if (weights) options.weights = weights;
-    if (thresholds) options.thresholds = thresholds;
-    if (typeof defaultSeverity === 'number') options.defaultSeverity = defaultSeverity;
+
+    if (weights !== undefined && weights !== null) {
+      const valid =
+        typeof weights === 'object' &&
+        Object.entries(weights).every(
+          ([k, v]) => ['frequency', 'severity', 'negativeSentiment'].includes(k) && isFiniteNonNegative(v)
+        );
+      if (!valid) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'weights must be an object of non-negative numbers keyed by frequency, severity, negativeSentiment.',
+        });
+        return;
+      }
+      options.weights = weights;
+    }
+
+    if (thresholds !== undefined && thresholds !== null) {
+      const valid =
+        typeof thresholds === 'object' &&
+        Object.entries(thresholds).every(
+          ([k, v]) =>
+            ['critical', 'high', 'medium'].includes(k) && isFiniteNonNegative(v) && (v as number) <= 100
+        );
+      if (!valid) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'thresholds must be an object of numbers between 0 and 100 keyed by critical, high, medium.',
+        });
+        return;
+      }
+      options.thresholds = thresholds;
+    }
+
+    if (defaultSeverity !== undefined && defaultSeverity !== null) {
+      if (typeof defaultSeverity !== 'number' || !Number.isFinite(defaultSeverity) || defaultSeverity < 1 || defaultSeverity > 5) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'defaultSeverity must be a number between 1 and 5.',
+        });
+        return;
+      }
+      options.defaultSeverity = defaultSeverity;
+    }
 
     const result = await store.recalculateIssuePriorityScores(options);
 
@@ -41,7 +83,6 @@ router.post('/recalculate', async (req: Request, res: Response) => {
  */
 router.get('/summary', async (_req: Request, res: Response) => {
   try {
-    const issues = store.getAllIssues();
     const result = await store.recalculateIssuePriorityScores();
 
     res.status(200).json({

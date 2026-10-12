@@ -102,6 +102,7 @@ export interface AnalyticsMetricsResponse {
     sentiment?: string;
     topic?: string;
     analysisStatus?: string;
+    severity?: number | string;
     datasetType?: string;
     search?: string;
   };

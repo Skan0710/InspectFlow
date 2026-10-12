@@ -60,8 +60,9 @@ export const AdaptionPage: React.FC = () => {
       if (res.ok) {
         const json = await res.json();
         setRuns(json.data || []);
-        if (json.data && json.data.length > 0 && !selectedRun) {
-          setSelectedRun(json.data[0]);
+        if (json.data && json.data.length > 0) {
+          // Functional update keeps fetchRuns stable instead of re-fetching on every selection
+          setSelectedRun((current) => current ?? json.data[0]);
         }
       }
     } catch (err) {
@@ -69,7 +70,7 @@ export const AdaptionPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedRun]);
+  }, []);
 
   const [runError, setRunError] = useState<string | null>(null);
 

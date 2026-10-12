@@ -4,6 +4,7 @@ import { UnconfiguredAIProvider } from './providers/unconfiguredProvider.js';
 import { TestAIProvider, type TestProviderOptions } from './providers/testProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
 import { OpenAIProvider } from './providers/openaiProvider.js';
+import { AnthropicProvider } from './providers/anthropicProvider.js';
 
 export * from './types.js';
 export * from './errors.js';
@@ -16,6 +17,7 @@ export { TestAIProvider } from './providers/testProvider.js';
 export { UnconfiguredAIProvider } from './providers/unconfiguredProvider.js';
 export { GeminiProvider } from './providers/geminiProvider.js';
 export { OpenAIProvider } from './providers/openaiProvider.js';
+export { AnthropicProvider } from './providers/anthropicProvider.js';
 
 let cachedProviderInstance: AIProvider | null = null;
 
@@ -59,6 +61,15 @@ export function createAIProvider(configOverride?: Partial<AIProviderConfig>): AI
       return new OpenAIProvider({
         apiKey: resolved.apiKey,
         providerName: 'groq',
+        model: resolved.model,
+        baseUrl: resolved.baseUrl,
+        timeoutMs: resolved.timeoutMs,
+        maxRetries: resolved.maxRetries,
+      });
+
+    case 'anthropic':
+      return new AnthropicProvider({
+        apiKey: resolved.apiKey,
         model: resolved.model,
         baseUrl: resolved.baseUrl,
         timeoutMs: resolved.timeoutMs,

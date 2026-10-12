@@ -105,7 +105,13 @@ export function validateFeedbackAnalysisOutput(
     success: true,
     data: {
       sentiment: obj.sentiment as FeedbackSentiment,
-      sentiment_score: typeof obj.sentiment_score === 'number' ? obj.sentiment_score : undefined,
+      sentiment_score:
+        typeof obj.sentiment_score === 'number' &&
+        Number.isFinite(obj.sentiment_score) &&
+        obj.sentiment_score >= -1 &&
+        obj.sentiment_score <= 1
+          ? obj.sentiment_score
+          : undefined,
       primary_topic: String(obj.primary_topic).trim(),
       secondary_topics: secondaryTopics,
       severity,

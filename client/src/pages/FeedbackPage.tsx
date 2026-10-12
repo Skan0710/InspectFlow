@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useDebouncedValue } from '../hooks/use-debounced-value';
 import { useSearchParams } from 'react-router-dom';
 import { 
   Search, 
@@ -100,11 +101,16 @@ export const FeedbackPage: React.FC = () => {
     setSentimentFilter(urlSent);
     setTopicFilter(urlTopic);
     setSeverityFilter(urlSev);
-    if (urlSearch) setSearch(urlSearch);
+    setSearch(urlSearch);
     setPage(1);
   }, [searchParams]);
 
+  // Debounce typing so each keystroke does not fire a request; guard against out-of-order responses
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const latestRequestRef = useRef(0);
+
   const fetchFeedback = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
@@ -120,18 +126,24 @@ export const FeedbackPage: React.FC = () => {
       if (analysisStatusFilter !== 'all') params.append('analysisStatus', analysisStatusFilter);
       if (datasetTypeFilter !== 'all') params.append('datasetType', datasetTypeFilter);
       if (topicFilter.trim()) params.append('topic', topicFilter.trim());
-      if (search.trim()) params.append('search', search.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
 
       const res = await fetch(`/api/feedback?${params.toString()}`);
+      if (requestId !== latestRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== latestRequestRef.current) return;
         setItems(data.data || []);
         setTotalCount(data.pagination?.total || 0);
       }
     } catch (err) {
-      console.error('Failed to load feedback feed:', err);
+      if (requestId === latestRequestRef.current) {
+        console.error('Failed to load feedback feed:', err);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [
     page,
@@ -142,7 +154,7 @@ export const FeedbackPage: React.FC = () => {
     analysisStatusFilter,
     datasetTypeFilter,
     topicFilter,
-    search,
+    debouncedSearch,
     sortBy,
     sortOrder,
   ]);

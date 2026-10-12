@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useDebouncedValue } from '../hooks/use-debounced-value';
 import { 
   Sparkles, 
   RotateCw, 
@@ -150,31 +151,41 @@ export const InsightsPage: React.FC = () => {
   const [generatingRecIds, setGeneratingRecIds] = useState<Record<string, boolean>>({});
   const [isBatchGenerating, setIsBatchGenerating] = useState<boolean>(false);
 
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const latestClusterRequestRef = useRef(0);
+
   const fetchClusters = useCallback(async () => {
+    const requestId = ++latestClusterRequestRef.current;
     setIsLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
       if (categoryFilter !== 'all') params.append('category', categoryFilter);
       if (priorityFilter !== 'all') params.append('priority', priorityFilter);
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
 
       const res = await fetch(`/api/clusters?${params.toString()}`);
+      if (requestId !== latestClusterRequestRef.current) return;
       if (!res.ok) {
-        throw new Error(`Failed to load clusters: ${res.statusText}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `Failed to load clusters (HTTP ${res.status})`);
       }
       const data = await res.json();
+      if (requestId !== latestClusterRequestRef.current) return;
       if (data.success) {
         setClusters(data.clusters || []);
         setStats(data.stats || null);
       }
     } catch (err: any) {
+      if (requestId !== latestClusterRequestRef.current) return;
       console.error('Failed to fetch clusters:', err);
       setError(err.message || 'Failed to connect to clustering service.');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestClusterRequestRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [categoryFilter, priorityFilter, searchQuery]);
+  }, [categoryFilter, priorityFilter, debouncedSearch]);
 
   const fetchRecommendations = useCallback(async () => {
     try {
@@ -213,12 +224,18 @@ export const InsightsPage: React.FC = () => {
       });
 
       if (!res.ok) {
-        throw new Error(`Clustering failed: ${res.statusText}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `Clustering failed (HTTP ${res.status})`);
       }
 
       const data = await res.json();
       if (data.success) {
+        // Previous run's members / unmatched list no longer describe the current issues
+        setClusterMembers({});
+        setUnmatchedReviews([]);
+        setExpandedClusterId(null);
         await fetchClusters();
+        await fetchRecommendations();
       }
     } catch (err: any) {
       console.error('Error triggering clustering:', err);
@@ -238,7 +255,8 @@ export const InsightsPage: React.FC = () => {
       });
 
       if (!res.ok) {
-        throw new Error(`Recalculation failed: ${res.statusText}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `Recalculation failed (HTTP ${res.status})`);
       }
 
       const data = await res.json();
@@ -261,7 +279,7 @@ export const InsightsPage: React.FC = () => {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Generation failed: ${res.statusText}`);
+        throw new Error(errData.message || errData.error || `Generation failed (HTTP ${res.status})`);
       }
       const data = await res.json();
       if (data.success && data.recommendation) {
@@ -288,7 +306,7 @@ export const InsightsPage: React.FC = () => {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Batch generation failed: ${res.statusText}`);
+        throw new Error(errData.message || errData.error || `Batch generation failed (HTTP ${res.status})`);
       }
       const data = await res.json();
       if (data.success && Array.isArray(data.recommendations)) {

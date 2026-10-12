@@ -73,6 +73,13 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
 
   const wasRunningRef = useRef<boolean>(false);
 
+  // Parents pass callbacks that change identity whenever their filters change. Keep the latest one
+  // in a ref so fetchStatus (and therefore the polling interval) stays stable.
+  const onAnalysisCompleteRef = useRef(onAnalysisComplete);
+  useEffect(() => {
+    onAnalysisCompleteRef.current = onAnalysisComplete;
+  }, [onAnalysisComplete]);
+
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/analysis/status');
@@ -83,16 +90,14 @@ export const AnalysisProgressCard: React.FC<AnalysisProgressCardProps> = ({
 
         // Transition check: Only fire onAnalysisComplete when run finishes from active state
         if (wasRunningRef.current && (data.run?.status === 'completed' || !data.isRunning)) {
-          if (onAnalysisComplete) {
-            onAnalysisComplete();
-          }
+          onAnalysisCompleteRef.current?.();
         }
         wasRunningRef.current = Boolean(data.isRunning);
       }
     } catch (err) {
       console.warn('Failed to fetch analysis status:', err);
     }
-  }, [onAnalysisComplete]);
+  }, []);
 
   // Initial load
   useEffect(() => {

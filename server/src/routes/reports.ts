@@ -87,9 +87,17 @@ router.post('/generate', async (req: Request, res: Response) => {
       return;
     }
 
-    // 3. Validate scope filters if provided
-    if (scope && typeof scope === 'object') {
-      const { error: filterError } = validateAnalyticsFilters(scope);
+    // 3. Validate scope filters if provided and keep only the normalised result
+    let validatedScope: ReturnType<typeof validateAnalyticsFilters>['filters'] | undefined;
+    if (scope !== undefined && scope !== null) {
+      if (typeof scope !== 'object' || Array.isArray(scope)) {
+        res.status(400).json({
+          error: 'ValidationError',
+          message: 'scope must be an object of filter fields.',
+        });
+        return;
+      }
+      const { filters, error: filterError } = validateAnalyticsFilters(scope);
       if (filterError) {
         res.status(400).json({
           error: 'ValidationError',
@@ -97,6 +105,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         });
         return;
       }
+      validatedScope = filters;
     }
 
     // 4. Generate report
@@ -105,7 +114,7 @@ router.post('/generate', async (req: Request, res: Response) => {
       description,
       reportType,
       format,
-      scope,
+      scope: validatedScope,
       cadence,
       recipients,
     });

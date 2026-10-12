@@ -216,6 +216,10 @@ export async function processCsvImport(
     await store.saveBatchRecord(summary);
 
     return summary;
+  } catch (err) {
+    // A malformed row/header mid-stream must not leave a partially imported batch behind
+    store.removeRecordsByBatchId(batchId);
+    throw err;
   } finally {
     // Only clean up temporary uploaded files (e.g. from Multer)
     if (options.isTemporary) {

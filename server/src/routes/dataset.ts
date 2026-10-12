@@ -26,7 +26,7 @@ router.post('/seed-sample', async (req: Request, res: Response) => {
   }
 
   try {
-    const reset = req.body.reset === true;
+    const reset = req.body?.reset === true;
     const summary = await seedSampleDataset({ reset });
     res.status(200).json({
       success: true,
@@ -49,13 +49,26 @@ router.post('/reset', async (req: Request, res: Response) => {
     return;
   }
 
-  const scope = req.body.scope || 'all';
-  const result = await resetDatabase(scope);
-  res.status(200).json({
-    success: true,
-    message: `Reset complete. Removed ${result.removedCount} records.`,
-    scope,
-  });
+  const scope = req.body?.scope || 'all';
+  if (!['all', 'sample_only', 'genuine_only'].includes(scope)) {
+    res.status(400).json({
+      error: 'ValidationError',
+      message: `Invalid scope '${String(scope)}'. Must be one of: all, sample_only, genuine_only.`,
+    });
+    return;
+  }
+
+  try {
+    const result = await resetDatabase(scope);
+    res.status(200).json({
+      success: true,
+      message: `Reset complete. Removed ${result.removedCount} records.`,
+      scope,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to reset dataset';
+    res.status(500).json({ error: 'ResetError', message: msg });
+  }
 });
 
 export default router;

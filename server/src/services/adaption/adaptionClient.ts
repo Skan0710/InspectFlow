@@ -186,7 +186,7 @@ export class AdaptionApiClient {
       body.job_specification = { max_rows: params.maxRows };
     }
 
-    return this.request<DatasetAdaptResponse>(`/datasets/${params.datasetId}/adapt`, {
+    return this.request<DatasetAdaptResponse>(`/datasets/${encodeURIComponent(params.datasetId)}/adapt`, {
       method: 'POST',
       body,
     });
@@ -206,7 +206,7 @@ export class AdaptionApiClient {
       };
     }
 
-    return this.request<DatasetStatusResponse>(`/datasets/${datasetId}/status`, {
+    return this.request<DatasetStatusResponse>(`/datasets/${encodeURIComponent(datasetId)}/status`, {
       method: 'GET',
     });
   }
@@ -238,7 +238,7 @@ export class AdaptionApiClient {
       };
     }
 
-    return this.request<DatasetEvaluationResponse>(`/datasets/${datasetId}/evaluation`, {
+    return this.request<DatasetEvaluationResponse>(`/datasets/${encodeURIComponent(datasetId)}/evaluation`, {
       method: 'GET',
     });
   }
@@ -257,7 +257,7 @@ export class AdaptionApiClient {
       });
     }
 
-    const response = await fetch(`${this.baseUrl}/datasets/${datasetId}/download?format=${format}`, {
+    const response = await fetch(`${this.baseUrl}/datasets/${encodeURIComponent(datasetId)}/download?format=${format}`, {
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
       },

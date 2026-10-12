@@ -26,7 +26,7 @@ function getDefaultModelForConfiguredProvider(provider: AIProviderType): string 
     case 'groq':
       return 'llama-3.3-70b-versatile';
     case 'anthropic':
-      return 'claude-3-5-haiku-20241022';
+      return 'claude-haiku-5-5';
     case 'test':
       return 'deterministic-test-model';
     default:

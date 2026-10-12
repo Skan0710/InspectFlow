@@ -13,11 +13,19 @@ const store = FeedbackStore.getInstance();
  */
 router.post('/start', async (req: Request, res: Response) => {
   try {
-    const { batchSize, concurrency, rateLimitDelayMs, datasetType, limit } = req.body;
+    const { batchSize, concurrency, rateLimitDelayMs, datasetType, limit } = req.body || {};
+
+    if (datasetType !== undefined && !['all', 'genuine_import', 'demo_sample'].includes(datasetType)) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Parameter "datasetType" must be one of: all, genuine_import, demo_sample.',
+      });
+      return;
+    }
 
     if (batchSize !== undefined) {
       const num = Number(batchSize);
-      if (isNaN(num) || num < 1 || num > 100) {
+      if (!Number.isInteger(num) || num < 1 || num > 100) {
         res.status(400).json({
           error: 'ValidationError',
           message: 'Parameter "batchSize" must be a positive integer between 1 and 100.',
@@ -28,7 +36,7 @@ router.post('/start', async (req: Request, res: Response) => {
 
     if (concurrency !== undefined) {
       const num = Number(concurrency);
-      if (isNaN(num) || num < 1 || num > 10) {
+      if (!Number.isInteger(num) || num < 1 || num > 10) {
         res.status(400).json({
           error: 'ValidationError',
           message: 'Parameter "concurrency" must be a positive integer between 1 and 10.',
@@ -50,7 +58,7 @@ router.post('/start', async (req: Request, res: Response) => {
 
     if (limit !== undefined) {
       const num = Number(limit);
-      if (isNaN(num) || num < 1) {
+      if (!Number.isInteger(num) || num < 1) {
         res.status(400).json({
           error: 'ValidationError',
           message: 'Parameter "limit" must be a positive integer greater than or equal to 1.',
@@ -120,7 +128,7 @@ router.get('/status', (req: Request, res: Response) => {
  * Cancels an active analysis run cleanly without losing previously completed results.
  */
 router.post('/cancel', async (req: Request, res: Response) => {
-  const runId = req.body.runId as string | undefined;
+  const runId = req.body?.runId as string | undefined;
   const cancelled = await pipeline.cancelActiveRun(runId);
 
   if (!cancelled) {
@@ -144,7 +152,15 @@ router.post('/cancel', async (req: Request, res: Response) => {
  */
 router.post('/resume', async (req: Request, res: Response) => {
   try {
-    const { batchSize, concurrency, rateLimitDelayMs, datasetType, limit } = req.body;
+    const { batchSize, concurrency, rateLimitDelayMs, datasetType, limit } = req.body || {};
+
+    if (datasetType !== undefined && !['all', 'genuine_import', 'demo_sample'].includes(datasetType)) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'Parameter "datasetType" must be one of: all, genuine_import, demo_sample.',
+      });
+      return;
+    }
 
     const run = await pipeline.startRun({
       batchSize: batchSize ? Number(batchSize) : undefined,

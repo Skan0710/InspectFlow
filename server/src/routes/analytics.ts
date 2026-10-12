@@ -55,14 +55,17 @@ export function validateAnalyticsFilters(query: Request['query']): {
   }
 
   let severity: number | 'all' | undefined;
-  if (typeof query.severity === 'string' && query.severity.trim()) {
-    const sevStr = query.severity.trim().toLowerCase();
+  const rawSeverity: unknown = query.severity;
+  const severityText =
+    typeof rawSeverity === 'number' ? String(rawSeverity) : typeof rawSeverity === 'string' ? rawSeverity : '';
+  if (severityText.trim()) {
+    const sevStr = severityText.trim().toLowerCase();
     if (sevStr !== 'all') {
       const parsed = Number(sevStr);
-      if (isNaN(parsed) || parsed < 1 || parsed > 5) {
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 5) {
         return {
           filters: {},
-          error: `Invalid severity filter '${query.severity}'. Must be an integer between 1 and 5, or 'all'.`,
+          error: `Invalid severity filter '${severityText}'. Must be an integer between 1 and 5, or 'all'.`,
         };
       }
       severity = parsed;

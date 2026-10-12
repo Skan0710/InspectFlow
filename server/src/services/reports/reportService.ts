@@ -43,6 +43,7 @@ export class ReportService {
       datasetType: scope.datasetType,
       sentiment: scope.sentiment,
       topic: scope.topic,
+      severity: scope.severity,
       analysisStatus: scope.analysisStatus,
       search: scope.search,
     });
@@ -109,7 +110,7 @@ export class ReportService {
         excerpts.push({
           feedbackId: m.feedback.id,
           quote: m.feedback.review,
-          sentiment: m.link.citationQuote || (m.feedback as any).sentiment || 'negative',
+          sentiment: m.analysis?.sentiment || 'unanalyzed',
           category: m.feedback.category,
         });
       }
@@ -128,11 +129,14 @@ export class ReportService {
       }
 
       const priorityScore = getPriorityScore(issue);
-      const scoreBreakdown = (issue.metadata as any)?.scoreBreakdown || {
-        frequencyPoints: Math.round(priorityScore * 0.4),
-        severityPoints: Math.round(priorityScore * 0.35),
-        negativeSentimentPoints: Math.round(priorityScore * 0.25),
-      };
+      // Stored breakdowns nest the point values under `components`; tolerate the flat shape too
+      const storedBreakdown = (issue.metadata as any)?.scoreBreakdown;
+      const scoreBreakdown = storedBreakdown?.components ||
+        storedBreakdown || {
+          frequencyPoints: Math.round(priorityScore * 0.4),
+          severityPoints: Math.round(priorityScore * 0.35),
+          negativeSentimentPoints: Math.round(priorityScore * 0.25),
+        };
 
       const negRatio =
         issue.feedbackCount > 0
@@ -221,7 +225,7 @@ export class ReportService {
     if (topIssuesData.length > 0) {
       const highestSev = topIssuesData[0];
       execSummaryParts.push(
-        `Top operational friction is concentrated in "${highestSev.title}" (Priority Score: ${highestSev.priorityScore}/100 [${highestSev.priority.toUpperCase()}], Frequency: ${highestSev.frequency} mentions). Action Center tracks ${issueStatusSummary.open} open/in-progress initiatives against ${issueStatusSummary.resolved} resolved tickets.`
+        `Top operational friction is concentrated in "${highestSev.title}" (Priority Score: ${highestSev.priorityScore}/100 [${highestSev.priority.toUpperCase()}], Frequency: ${highestSev.frequency} mentions). Action Center tracks ${issueStatusSummary.open + issueStatusSummary.in_progress} open/in-progress initiatives against ${issueStatusSummary.resolved} resolved tickets.`
       );
     }
 
@@ -266,7 +270,8 @@ export class ReportService {
         datasetOrigin: datasetOriginName,
         duplicateCount: metrics.duplicateStats.duplicateFeedbackCount,
         uniqueCount: metrics.duplicateStats.uniqueReviewTexts,
-        duplicateRatePercent: Math.round(metrics.duplicateStats.duplicateRatio * 100),
+        // duplicateStats.duplicateRatio is already expressed as a percentage
+        duplicateRatePercent: Math.round(metrics.duplicateStats.duplicateRatio),
       },
       sentimentDistribution: {
         positive: {

@@ -55,6 +55,7 @@ export class AnalyticsService {
       datasetType: filters.datasetType,
       sentiment: filters.sentiment,
       topic: filters.topic,
+      severity: filters.severity,
       analysisStatus: filters.analysisStatus,
       search: filters.search,
     }).data;
@@ -328,6 +329,7 @@ export class AnalyticsService {
         sentiment: filters.sentiment || 'all',
         topic: filters.topic || 'all',
         analysisStatus: filters.analysisStatus || 'all',
+        severity: filters.severity ?? 'all',
         datasetType: filters.datasetType || 'all',
         search: filters.search || '',
       },
@@ -392,6 +394,11 @@ export class AnalyticsService {
     if (filters.sentiment && filters.sentiment !== 'all') {
       whereClauses.push(`LOWER(fa.sentiment) = LOWER($${paramIndex++})`);
       values.push(filters.sentiment);
+    }
+
+    if (filters.severity !== undefined && filters.severity !== 'all') {
+      whereClauses.push(`ROUND(COALESCE(fa.urgency_score * 5, 3)) = $${paramIndex++}`);
+      values.push(Number(filters.severity));
     }
 
     if (filters.topic && filters.topic !== 'all') {

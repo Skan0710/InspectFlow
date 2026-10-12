@@ -183,6 +183,23 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
+  // body-parser failures (malformed JSON, oversized payload) are client errors, not server faults
+  const bodyErr = err as Error & { type?: string; status?: number };
+  if (bodyErr.type === 'entity.parse.failed') {
+    res.status(400).json({
+      error: 'BadRequest',
+      message: 'Request body contains malformed JSON.',
+    });
+    return;
+  }
+  if (bodyErr.type === 'entity.too.large') {
+    res.status(413).json({
+      error: 'PayloadTooLarge',
+      message: 'Request body exceeds the maximum allowed size.',
+    });
+    return;
+  }
+
   if (err.name === 'MulterError') {
     const multerErr = err as unknown as { code: string };
     if (multerErr.code === 'LIMIT_FILE_SIZE') {

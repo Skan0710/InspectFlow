@@ -17,6 +17,9 @@ export async function fetchAnalyticsMetrics(
   if (filters.analysisStatus && filters.analysisStatus !== 'all') {
     params.append('analysisStatus', filters.analysisStatus);
   }
+  if (filters.severity !== undefined && filters.severity !== 'all') {
+    params.append('severity', String(filters.severity));
+  }
   if (filters.datasetType && filters.datasetType !== 'all') {
     params.append('datasetType', filters.datasetType);
   }

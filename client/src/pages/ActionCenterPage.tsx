@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useDebouncedValue } from '../hooks/use-debounced-value';
 import {
   RotateCw,
   Search,
@@ -52,7 +53,11 @@ export const ActionCenterPage: React.FC = () => {
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
   const [assigneeText, setAssigneeText] = useState<string>('');
 
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  const latestRequestRef = useRef(0);
+
   const fetchIssues = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -63,15 +68,18 @@ export const ActionCenterPage: React.FC = () => {
         params.append('status', statusFilter);
       }
       if (priorityFilter !== 'all') params.append('priority', priorityFilter);
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       params.append('sortBy', sortBy);
       params.append('sortOrder', 'desc');
 
       const res = await fetch(`/api/issues?${params.toString()}`);
+      if (requestId !== latestRequestRef.current) return;
       if (!res.ok) {
-        throw new Error(`Failed to load issues: ${res.statusText}`);
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.message || `Failed to load issues (HTTP ${res.status})`);
       }
       const data = await res.json();
+      if (requestId !== latestRequestRef.current) return;
       if (data.success) {
         setIssues(data.issues || []);
         if (data.statusSummary) {
@@ -81,12 +89,15 @@ export const ActionCenterPage: React.FC = () => {
         throw new Error(data.message || 'Error loading issues.');
       }
     } catch (err: any) {
+      if (requestId !== latestRequestRef.current) return;
       console.error('Failed to fetch issues:', err);
       setError(err.message || 'Failed to connect to issues service.');
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [statusFilter, priorityFilter, searchQuery, sortBy]);
+  }, [statusFilter, priorityFilter, debouncedSearch, sortBy]);
 
   useEffect(() => {
     fetchIssues();

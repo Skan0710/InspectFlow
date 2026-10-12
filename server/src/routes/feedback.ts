@@ -151,31 +151,25 @@ router.get('/import/batches/:id', (req: Request, res: Response) => {
  * GET /api/feedback/stats
  * Dedicated metrics aggregation endpoint matching analytics specifications.
  */
-router.get('/metrics', async (req: Request, res: Response) => {
-  const { validateAnalyticsFilters } = await import('./analytics.js');
-  const { AnalyticsService } = await import('../services/analytics/analyticsService.js');
-  const { filters, error } = validateAnalyticsFilters(req.query);
-  if (error) {
-    res.status(400).json({ error: 'ValidationError', message: error });
-    return;
+async function handleFeedbackMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { validateAnalyticsFilters } = await import('./analytics.js');
+    const { AnalyticsService } = await import('../services/analytics/analyticsService.js');
+    const { filters, error } = validateAnalyticsFilters(req.query);
+    if (error) {
+      res.status(400).json({ error: 'ValidationError', message: error });
+      return;
+    }
+    const analyticsService = new AnalyticsService();
+    const metrics = await analyticsService.getMetrics(filters);
+    res.status(200).json(metrics);
+  } catch (err) {
+    next(err);
   }
-  const analyticsService = new AnalyticsService();
-  const metrics = await analyticsService.getMetrics(filters);
-  res.status(200).json(metrics);
-});
+}
 
-router.get('/stats', async (req: Request, res: Response) => {
-  const { validateAnalyticsFilters } = await import('./analytics.js');
-  const { AnalyticsService } = await import('../services/analytics/analyticsService.js');
-  const { filters, error } = validateAnalyticsFilters(req.query);
-  if (error) {
-    res.status(400).json({ error: 'ValidationError', message: error });
-    return;
-  }
-  const analyticsService = new AnalyticsService();
-  const metrics = await analyticsService.getMetrics(filters);
-  res.status(200).json(metrics);
-});
+router.get('/metrics', handleFeedbackMetrics);
+router.get('/stats', handleFeedbackMetrics);
 
 export const ALLOWED_MANUAL_CATEGORIES = new Set([
   'Product Feedback',
@@ -260,7 +254,7 @@ async function handleManualFeedbackSubmission(
     // 4. Persistence using existing feedback model
     // Original review text is strictly preserved
     const now = new Date().toISOString();
-    const id = `fb-man-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+    const id = crypto.randomUUID();
     const record: RawFeedbackRecord = {
       id,
       review, // Exact verbatim text preserved
@@ -330,7 +324,8 @@ router.post('/submit', handleManualFeedbackSubmission);
  * GET /api/feedback
  * Returns paginated feedback records with filtering by category, sentiment, topic, analysisStatus, or search term.
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
   const page = req.query.page !== undefined ? Number(req.query.page) : 1;
   const pageSize = req.query.pageSize !== undefined ? Number(req.query.pageSize) : 25;
 
@@ -375,6 +370,9 @@ router.get('/', async (req: Request, res: Response) => {
     ...result,
     filtersApplied: filters,
   });
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
@@ -427,8 +425,12 @@ router.get('/export', async (req: Request, res: Response) => {
     const EXPORT_CHUNK_SIZE = 500;
     let page = 1;
     let hasMore = true;
+    let clientClosed = false;
+    res.on('close', () => {
+      clientClosed = true;
+    });
 
-    while (hasMore) {
+    while (hasMore && !clientClosed) {
       const pageResult = await store.getPaginatedRecords({
         page,
         pageSize: EXPORT_CHUNK_SIZE,
@@ -462,9 +464,14 @@ router.get('/export', async (req: Request, res: Response) => {
           escapeCsv(item.analysis ? 'analyzed' : 'pending'),
         ].join(',');
 
+        if (clientClosed) break;
         const canContinue = res.write(row + '\r\n');
-        if (!canContinue) {
-          await new Promise<void>((resolve) => res.once('drain', resolve));
+        if (!canContinue && !clientClosed) {
+          // Resolve on 'close' too so a disconnected client cannot leave this loop awaiting forever
+          await new Promise<void>((resolve) => {
+            res.once('drain', resolve);
+            res.once('close', resolve);
+          });
         }
       }
 

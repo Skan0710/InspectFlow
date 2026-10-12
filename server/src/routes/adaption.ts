@@ -48,6 +48,13 @@ router.get('/runs/:id', (req: Request, res: Response) => {
 router.post('/prepare', (req: Request, res: Response) => {
   try {
     const { datasetType, maxRows, requireAnalyzed } = req.body || {};
+    if (maxRows !== undefined && maxRows !== null && !(Number.isInteger(Number(maxRows)) && Number(maxRows) >= 1)) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'maxRows must be a positive integer.',
+      });
+      return;
+    }
     const prepared = adaptionService.prepareDataset({
       datasetType,
       maxRows: maxRows ? Number(maxRows) : undefined,
@@ -74,6 +81,13 @@ router.post('/prepare', (req: Request, res: Response) => {
 router.post('/runs', async (req: Request, res: Response) => {
   try {
     const { datasetName, datasetType, maxRows, estimateOnly, simulateRun } = req.body || {};
+    if (maxRows !== undefined && maxRows !== null && !(Number.isInteger(Number(maxRows)) && Number(maxRows) >= 1)) {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'maxRows must be a positive integer.',
+      });
+      return;
+    }
 
     const run = await adaptionService.runAdaption({
       datasetName,

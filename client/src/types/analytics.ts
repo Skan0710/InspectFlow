@@ -4,6 +4,7 @@ export interface AnalyticsFilterParams {
   category?: string;
   sentiment?: 'positive' | 'neutral' | 'negative' | 'mixed' | 'all';
   topic?: string;
+  severity?: number | 'all';
   analysisStatus?: 'analyzed' | 'pending' | 'all';
   datasetType?: DatasetOriginType | 'all';
   search?: string;
@@ -90,6 +91,7 @@ export interface AnalyticsMetricsResponse {
     sentiment?: string;
     topic?: string;
     analysisStatus?: string;
+    severity?: number | string;
     datasetType?: string;
     search?: string;
   };

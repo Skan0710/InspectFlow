@@ -131,7 +131,10 @@ export const OverviewPage: React.FC = () => {
     [isLoading]
   );
 
+  const latestLoadRef = useRef(0);
+
   const loadData = useCallback(async () => {
+    const requestId = ++latestLoadRef.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -142,14 +145,18 @@ export const OverviewPage: React.FC = () => {
         }),
         fetchDatasetStatus(),
       ]);
+      if (requestId !== latestLoadRef.current) return;
       setMetrics(metricsData);
       setDatasetStatus(statusData);
     } catch (err: unknown) {
+      if (requestId !== latestLoadRef.current) return;
       const message = err instanceof Error ? err.message : 'Failed to retrieve overview analytics.';
       setError(message);
       console.error('[OverviewPage] Data loading error:', err);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestLoadRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [selectedCategory, selectedDatasetType]);
 

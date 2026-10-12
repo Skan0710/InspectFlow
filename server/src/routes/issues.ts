@@ -320,12 +320,28 @@ router.patch('/:id', async (req: Request, res: Response) => {
       }
     }
 
+    if (isSaved !== undefined && typeof isSaved !== 'boolean') {
+      res.status(400).json({
+        error: 'ValidationError',
+        message: 'isSaved must be a boolean.',
+      });
+      return;
+    }
+
+    // The store expects a structured note; accept a plain string for convenience
+    const normalizedNote =
+      typeof note === 'string'
+        ? { content: note, author: changedBy }
+        : note && typeof note === 'object'
+          ? { content: String(note.content ?? ''), author: note.author ?? changedBy }
+          : undefined;
+
     const updated = await store.updateIssue(id, {
-      status,
+      status: status !== undefined ? (String(status).toLowerCase().trim() as IssueStatus) : undefined,
       assignee,
       assigneeEmail,
       isSaved,
-      note,
+      note: normalizedNote,
       changedBy,
       reason,
     });
