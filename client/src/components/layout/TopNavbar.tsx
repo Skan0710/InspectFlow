@@ -14,26 +14,27 @@ const isActivePath = (pathname: string, path: string) =>
 export const TopNavbar: React.FC = () => {
   const { pathname } = useLocation();
   const profile = useProfile();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  // Menus remember the route they were opened on, so navigating closes them without an effect
+  const [menuAt, setMenuAt] = useState<string | null>(null);
+  const [profileAt, setProfileAt] = useState<string | null>(null);
+  const menuOpen = menuAt === pathname;
+  const profileOpen = profileAt === pathname;
+  const setMenuOpen = (next: boolean | ((open: boolean) => boolean)) =>
+    setMenuAt((cur) => ((typeof next === 'function' ? next(cur === pathname) : next) ? pathname : null));
+  const setProfileOpen = (next: boolean | ((open: boolean) => boolean)) =>
+    setProfileAt((cur) => ((typeof next === 'function' ? next(cur === pathname) : next) ? pathname : null));
   const profileRef = useRef<HTMLDivElement>(null);
-
-  // Close menus on navigation
-  useEffect(() => {
-    setMenuOpen(false);
-    setProfileOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     if (!menuOpen && !profileOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMenuOpen(false);
-        setProfileOpen(false);
+        setMenuAt(null);
+        setProfileAt(null);
       }
     };
     const onPointer = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileAt(null);
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('mousedown', onPointer);

@@ -158,7 +158,7 @@ export const AdaptionPage: React.FC = () => {
             Format customer reviews into instruction prompt-completion pairs, run official quality evaluations, and enhance classification accuracy.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <LineHoverLink
             variant="slide"
             href="/insights"

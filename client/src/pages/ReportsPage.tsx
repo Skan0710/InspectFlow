@@ -162,7 +162,7 @@ export const ReportsPage: React.FC = () => {
             Generate executive briefings, downloadable PDF audits, and structured CSV intelligence digests calculated from actual feedback records.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <LineHoverLink
             variant="slide"
             href="/actions"
