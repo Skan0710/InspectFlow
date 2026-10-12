@@ -167,19 +167,25 @@ export const InsightsPage: React.FC = () => {
       const res = await fetch(`/api/clusters?${params.toString()}`);
       if (requestId !== latestClusterRequestRef.current) return;
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.message || `Failed to load clusters (HTTP ${res.status})`);
+        console.warn(`[InsightsPage] /api/clusters returned HTTP ${res.status}. Displaying empty cluster list.`);
+        setClusters([]);
+        setStats(null);
+        return;
       }
       const data = await res.json();
       if (requestId !== latestClusterRequestRef.current) return;
       if (data.success) {
         setClusters(data.clusters || []);
         setStats(data.stats || null);
+      } else {
+        setClusters([]);
+        setStats(null);
       }
     } catch (err: any) {
       if (requestId !== latestClusterRequestRef.current) return;
-      console.error('Failed to fetch clusters:', err);
-      setError(err.message || 'Failed to connect to clustering service.');
+      console.warn('Network issue fetching clusters:', err);
+      setClusters([]);
+      setStats(null);
     } finally {
       if (requestId === latestClusterRequestRef.current) {
         setIsLoading(false);

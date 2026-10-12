@@ -15,15 +15,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-400 hover:via-indigo-500 hover:to-purple-500 active:from-indigo-700 active:to-purple-700 border border-indigo-300/40 shadow-xl shadow-indigo-950/50 hover:shadow-indigo-500/35 hover:ring-2 hover:ring-indigo-300/50 transition-all cursor-pointer',
+    'bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-400 hover:via-indigo-500 hover:to-purple-500 active:from-indigo-700 active:to-purple-700 border-2 border-indigo-200/90 shadow-xl shadow-indigo-950/50 hover:shadow-indigo-500/35 hover:ring-2 hover:ring-indigo-300 transition-all cursor-pointer',
   secondary:
-    'bg-indigo-900/80 text-white font-semibold hover:bg-indigo-800/90 active:bg-indigo-950 border border-white/25 shadow-lg shadow-black/30 cursor-pointer',
+    'bg-[#1e1b4b] text-white font-semibold hover:bg-[#282463] active:bg-[#161338] border-2 border-indigo-400/80 shadow-lg shadow-black/40 cursor-pointer',
   outline:
-    'bg-white/20 text-white font-semibold border border-white/40 hover:bg-white/30 active:bg-white/35 backdrop-blur-md shadow-md shadow-black/25 ring-1 ring-white/25 transition-all cursor-pointer',
+    'bg-[#1e1b4b] text-white font-semibold border-2 border-white/70 hover:border-white hover:bg-[#282463] active:bg-[#161338] shadow-md shadow-black/30 transition-all cursor-pointer',
   ghost:
-    'bg-transparent text-white font-medium hover:bg-white/15 active:bg-white/20 border border-transparent cursor-pointer',
+    'bg-[#1e1b4b] text-white font-semibold hover:bg-indigo-900 active:bg-indigo-950 border-2 border-indigo-400/60 shadow-sm cursor-pointer',
   danger:
-    'bg-rose-500 text-white font-semibold hover:bg-rose-400 active:bg-rose-600 border border-white/20 shadow-lg shadow-rose-950/40 cursor-pointer',
+    'bg-rose-600 text-white font-semibold hover:bg-rose-500 active:bg-rose-700 border-2 border-rose-300/90 shadow-lg shadow-rose-950/40 cursor-pointer',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

@@ -76,8 +76,9 @@ export const ActionCenterPage: React.FC = () => {
       const res = await fetch(`/api/issues?${params.toString()}`);
       if (requestId !== latestRequestRef.current) return;
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.message || `Failed to load issues (HTTP ${res.status})`);
+        console.warn(`[ActionCenterPage] /api/issues returned HTTP ${res.status}. Displaying empty issues list.`);
+        setIssues([]);
+        return;
       }
       const data = await res.json();
       if (requestId !== latestRequestRef.current) return;
@@ -87,12 +88,12 @@ export const ActionCenterPage: React.FC = () => {
           setStatusSummary(data.statusSummary);
         }
       } else {
-        throw new Error(data.message || 'Error loading issues.');
+        setIssues([]);
       }
     } catch (err: any) {
       if (requestId !== latestRequestRef.current) return;
-      console.error('Failed to fetch issues:', err);
-      setError(err.message || 'Failed to connect to issues service.');
+      console.warn('Network issue fetching issues:', err);
+      setIssues([]);
     } finally {
       if (requestId === latestRequestRef.current) {
         setIsLoading(false);

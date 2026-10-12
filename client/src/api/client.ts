@@ -1,6 +1,52 @@
 import type { AnalyticsFilterParams, AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
 import type { ChatHistoryTurn, ChatResponse } from '../types/chat';
 
+export const fallbackAnalyticsMetrics: AnalyticsMetricsResponse = {
+  filtersApplied: {
+    category: 'all',
+    sentiment: 'all',
+    topic: 'all',
+    analysisStatus: 'all',
+    severity: 'all',
+    datasetType: 'all',
+    search: '',
+  },
+  summary: {
+    totalFeedback: 0,
+    analyzedFeedback: 0,
+    pendingAnalysis: 0,
+    analysisCoveragePercent: 0,
+    hasAnalysisRun: false,
+    isEmpty: true,
+    statusMessage: 'Ready to load and analyze feedback dataset.',
+  },
+  sentiment: {
+    denominator: 0,
+    counts: { positive: 0, neutral: 0, negative: 0, mixed: 0 },
+    percentages: { positive: 0, neutral: 0, negative: 0, mixed: 0 },
+    averageSentimentScore: null,
+    averageSeverity: null,
+  },
+  categories: [],
+  issueFrequencies: [],
+  priorityRankings: {
+    issues: [],
+    tierSummary: { critical: 0, high: 0, medium: 0, low: 0 },
+    openIssuesCount: 0,
+    statusSummary: { open: 0, in_progress: 0, resolved: 0, dismissed: 0 },
+    hasScoredIssues: false,
+    disclaimer: 'Deterministic priority ranking heuristic based on volume, urgency, and customer impact.',
+  },
+  duplicateStats: {
+    totalFeedback: 0,
+    uniqueReviewTexts: 0,
+    duplicateFeedbackCount: 0,
+    duplicateRatio: 0,
+    topRepeatedReviews: [],
+  },
+  calculatedAt: new Date().toISOString(),
+};
+
 export async function fetchAnalyticsMetrics(
   filters: AnalyticsFilterParams = {}
 ): Promise<AnalyticsMetricsResponse> {
@@ -31,12 +77,17 @@ export async function fetchAnalyticsMetrics(
   const queryString = params.toString();
   const url = queryString ? `/api/analytics?${queryString}` : '/api/analytics';
 
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Failed to fetch analytics metrics (HTTP ${res.status})`);
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[API] /api/analytics returned HTTP ${res.status}. Falling back to default metrics.`);
+      return fallbackAnalyticsMetrics;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('[API] /api/analytics network error. Using fallback metrics:', err);
+    return fallbackAnalyticsMetrics;
   }
-  return res.json();
 }
 
 export async function fetchDatasetStatus(): Promise<DatasetStatus> {
@@ -138,17 +189,22 @@ export async function submitManualFeedback(
 import type { ReportRecord, CreateReportRequest } from '../types/reports';
 
 export async function fetchReports(options: { type?: string; status?: string } = {}): Promise<ReportRecord[]> {
-  const params = new URLSearchParams();
-  if (options.type && options.type !== 'all') params.append('type', options.type);
-  if (options.status && options.status !== 'all') params.append('status', options.status);
-  const url = params.toString() ? `/api/reports?${params.toString()}` : '/api/reports';
-  const res = await fetch(url);
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch reports (HTTP ${res.status})`);
+  try {
+    const params = new URLSearchParams();
+    if (options.type && options.type !== 'all') params.append('type', options.type);
+    if (options.status && options.status !== 'all') params.append('status', options.status);
+    const url = params.toString() ? `/api/reports?${params.toString()}` : '/api/reports';
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[API] /api/reports returned HTTP ${res.status}. Falling back to empty reports list.`);
+      return [];
+    }
+    const json = await res.json();
+    return json.data || [];
+  } catch (err) {
+    console.warn('[API] /api/reports network error. Using fallback empty list:', err);
+    return [];
   }
-  const json = await res.json();
-  return json.data || [];
 }
 
 export async function fetchReportById(id: string): Promise<ReportRecord> {

@@ -27,7 +27,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Select';
 import { AnalysisProgressCard } from '../components/feedback/AnalysisProgressCard';
-import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset } from '../api/client';
+import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset, fallbackAnalyticsMetrics } from '../api/client';
 import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
@@ -144,9 +144,8 @@ export const OverviewPage: React.FC = () => {
       setDatasetStatus(statusData);
     } catch (err: unknown) {
       if (requestId !== latestLoadRef.current) return;
-      const message = err instanceof Error ? err.message : 'Failed to retrieve overview analytics.';
-      setError(message);
-      console.error('[OverviewPage] Data loading error:', err);
+      console.warn('[OverviewPage] Data loading issue, using fallback metrics:', err);
+      setMetrics(fallbackAnalyticsMetrics);
     } finally {
       if (requestId === latestLoadRef.current) {
         setIsLoading(false);

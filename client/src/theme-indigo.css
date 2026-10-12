@@ -28,7 +28,55 @@
   color: #a5b4fc !important;
 }
 
-/* Explicit button visibility across all themes and pages */
+/* Explicit button visibility across all themes and pages: clear borders and non-transparent backgrounds */
+.app-theme button:not([class*="underline"]):not([class*="inline"]) {
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure buttons with transparent background or faint white/slate backgrounds become solid, opaque, and clearly visible */
+.app-theme button.bg-transparent:not([class*="underline"]),
+.app-theme button[class*="bg-transparent"]:not([class*="underline"]),
+.app-theme button[class*="bg-white/5"]:not([class*="underline"]),
+.app-theme button[class*="bg-white/10"]:not([class*="underline"]),
+.app-theme button[class*="bg-white/15"]:not([class*="underline"]),
+.app-theme button[class*="bg-white/20"]:not([class*="underline"]),
+.app-theme button[class*="bg-slate-50"]:not([class*="underline"]),
+.app-theme button[class*="bg-slate-100"]:not([class*="underline"]),
+.app-theme button[class*="bg-slate-200"]:not([class*="underline"]) {
+  background-color: #1e1b4b !important;
+  border: 1.5px solid rgba(165, 180, 252, 0.65) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.app-theme button:hover:not([class*="underline"]) {
+  border-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Maintain primary gradient buttons with crisp high-contrast border */
+.app-theme button[class*="from-indigo-"],
+.app-theme button[class*="bg-indigo-600"],
+.app-theme button[class*="bg-indigo-500"] {
+  border: 1.5px solid rgba(224, 231, 255, 0.85) !important;
+}
+
+/* Danger buttons with crisp border */
+.app-theme button[class*="bg-rose-"],
+.app-theme button[class*="bg-red-"] {
+  border: 1.5px solid rgba(254, 205, 211, 0.85) !important;
+}
+
+/* Badge dismiss buttons and inline text links inside badges */
+.app-theme [class*="rounded-full"] button,
+.app-theme [class*="badge"] button,
+.app-theme button[class*="ml-1"],
+.app-theme button[class*="underline"] {
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .app-theme button[class*="border-white"],
 .app-theme button[class*="border-slate"],
 .app-theme button[class*="bg-white/"],
@@ -36,9 +84,6 @@
 .app-theme [class*="bg-white/15"],
 .app-theme [class*="bg-white/20"] {
   color: #ffffff !important;
-}
-.app-theme button {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 .app-theme [class~="bg-slate-50"] { background-color: rgba(255,255,255,0.05) }
 .app-theme [class^="bg-slate-50/"], .app-theme [class*=" bg-slate-50/"] { background-color: rgba(255,255,255,0.05) }

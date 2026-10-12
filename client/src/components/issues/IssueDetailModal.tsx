@@ -68,18 +68,18 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
       try {
         const res = await fetch(`/api/issues/${issueId}`);
         if (!res.ok) {
-          throw new Error(`Failed to load issue details: ${res.statusText}`);
+          throw new Error(`Issue details are currently unavailable (HTTP ${res.status}).`);
         }
         const data = await res.json();
         if (data.success) {
           setDetail(data);
           setAssigneeInput(data.issue.assignee || '');
         } else {
-          throw new Error(data.message || 'Error loading issue details.');
+          throw new Error(data.message || 'Issue details could not be retrieved.');
         }
       } catch (err: any) {
-        console.error('Failed to fetch issue details:', err);
-        setError(err.message || 'Error occurred while loading issue.');
+        console.warn('Issue details fetch note:', err);
+        setError(err.message || 'Unable to retrieve issue details.');
       } finally {
         setIsLoading(false);
       }

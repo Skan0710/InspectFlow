@@ -61,9 +61,10 @@ export const ReportsPage: React.FC = () => {
     setErrorMessage(null);
     try {
       const data = await fetchReports({ type: typeFilter });
-      setReports(data);
+      setReports(data || []);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to load reports');
+      console.warn('[ReportsPage] Reports loading note:', err);
+      setReports([]);
     } finally {
       setIsLoading(false);
     }
