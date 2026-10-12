@@ -23,6 +23,7 @@ import {
 import { Link } from 'react-router-dom';
 import type { HealthResponse } from '../types/api';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
+import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
 
 const mockTelemetryData = [
   { time: '00:00', requests: 120, latency: 18 },
@@ -79,10 +80,10 @@ export const Home: React.FC = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/90 to-slate-950/80 p-8 sm:p-12 shadow-2xl backdrop-blur-xl"
+        className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-950 p-8 sm:p-12 shadow-2xl backdrop-blur-xl"
       >
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-violet-600/15 blur-3xl" />
+        {/* Immersive 3D ShaderGradient Background Atmosphere */}
+        <ShaderGradientBackground className="absolute inset-0 pointer-events-none" />
 
         <div className="relative z-10 max-w-3xl space-y-6">
           <div className="home-hero-badge inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-medium text-indigo-300">

@@ -31,6 +31,7 @@ import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset } from '..
 import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
+import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
 
 const SENTIMENT_COLORS = {
   positive: '#10b981', // Emerald
@@ -207,6 +208,42 @@ export const OverviewPage: React.FC = () => {
 
   return (
     <div ref={pageContainerRef} className="space-y-6">
+      {/* High-Visibility AI Intelligence Atmosphere Banner with ShaderGradient */}
+      <div className="overview-hero-surface relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-7 text-white shadow-xl">
+        <ShaderGradientBackground className="absolute inset-0 pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-medium text-indigo-300">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              Build Battle 2026 AI Intelligence Engine
+            </div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+              Customer Feedback Analytics & Priority Radar
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Real customer voice ingestion, multi-factor deterministic triage ranking, and evidence-grounded action intelligence.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              to="/feedback"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 transition-all hover:bg-indigo-500 hover:shadow-indigo-600/50"
+            >
+              <Database className="h-3.5 w-3.5" />
+              Explore Feedback
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link
+              to="/actions"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+            >
+              <Layers className="h-3.5 w-3.5 text-indigo-400" />
+              Action Center
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Page Header with Scope Controls */}
       <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-slate-200">
         <div>
