@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { AnimatedButton } from './animated-button';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -15,21 +15,22 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-500 text-white hover:bg-indigo-400 active:bg-indigo-600 border border-white/20 shadow-lg shadow-indigo-950/40',
+    'bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-400 hover:via-indigo-500 hover:to-purple-500 active:from-indigo-700 active:to-purple-700 border border-indigo-300/40 shadow-xl shadow-indigo-950/50 hover:shadow-indigo-500/35 hover:ring-2 hover:ring-indigo-300/50 transition-all cursor-pointer',
   secondary:
-    'bg-indigo-950 text-white hover:bg-indigo-900 active:bg-black border border-white/20 shadow-lg shadow-black/30',
+    'bg-indigo-950 text-white font-semibold hover:bg-indigo-900 active:bg-black border border-white/20 shadow-lg shadow-black/30 cursor-pointer',
   outline:
-    'bg-white/10 text-white border border-white/30 hover:bg-white/20 active:bg-white/25 backdrop-blur-sm',
+    'bg-white/15 text-white font-medium border border-white/30 hover:bg-white/25 active:bg-white/30 backdrop-blur-md shadow-md shadow-indigo-950/30 cursor-pointer',
   ghost:
-    'bg-transparent text-white hover:bg-white/15 active:bg-white/20 border border-transparent',
+    'bg-transparent text-white font-medium hover:bg-white/15 active:bg-white/20 border border-transparent cursor-pointer',
   danger:
-    'bg-rose-500 text-white hover:bg-rose-400 active:bg-rose-600 border border-white/20 shadow-lg shadow-rose-950/40',
+    'bg-rose-500 text-white font-semibold hover:bg-rose-400 active:bg-rose-600 border border-white/20 shadow-lg shadow-rose-950/40 cursor-pointer',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'px-2.5 py-1.5 text-xs font-medium gap-1.5 rounded-lg',
-  md: 'px-3.5 py-2 text-sm font-medium gap-2 rounded-lg',
-  lg: 'px-4.5 py-2.5 text-base font-medium gap-2.5 rounded-xl',
+  sm: 'px-3 py-1.5 text-sm font-medium gap-2 rounded-xl',
+  md: 'px-4.5 py-2.5 text-base font-semibold gap-2.5 rounded-xl',
+  lg: 'px-6 py-3.5 text-lg font-semibold gap-3 rounded-2xl',
+  xl: 'px-8 py-4 text-xl font-bold gap-3.5 rounded-2xl shadow-2xl shadow-indigo-500/30 ring-2 ring-white/20',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

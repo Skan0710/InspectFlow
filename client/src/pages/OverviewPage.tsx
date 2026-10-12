@@ -218,20 +218,23 @@ export const OverviewPage: React.FC = () => {
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
       <div className="space-y-6">
       {/* Page Header with Scope Controls */}
-      <div className="overview-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
+      <div className="overview-header flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between pb-4 page-header">
         <div>
-          <h2 className="font-bold tracking-tight text-slate-900">
-            Overview
-          </h2>
-                  </div>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+            Executive Overview
+          </h1>
+          <p className="mt-1.5 text-base sm:text-lg text-indigo-100/90 font-normal">
+            Customer feedback intelligence & priority triage at a glance
+          </p>
+        </div>
         
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Quick Filters */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-10 py-1.5"
+              className="h-11 py-2 text-base font-medium rounded-xl border-white/20 bg-white/10"
             >
               <option value="all">All Categories</option>
               <option value="Product Feedback">Product Feedback</option>
@@ -243,7 +246,7 @@ export const OverviewPage: React.FC = () => {
             <Select
               value={selectedDatasetType}
               onChange={(e) => setSelectedDatasetType(e.target.value)}
-              className="h-10 py-1.5"
+              className="h-11 py-2 text-base font-medium rounded-xl border-white/20 bg-white/10"
             >
               <option value="all">All Provenance</option>
               <option value="genuine_import">Genuine CSV Only</option>
@@ -253,17 +256,23 @@ export const OverviewPage: React.FC = () => {
 
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={loadData}
             isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+            leftIcon={<RefreshCw className="h-4 w-4" />}
             title="Refresh dashboard metrics"
+            className="text-base font-semibold px-4"
           >
             Refresh
           </Button>
 
           <Link to="/feedback">
-            <Button variant="primary" size="sm" leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}>
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<FileSpreadsheet className="h-4 w-4" />}
+              className="cta-focus-glow text-base font-bold px-5 shadow-lg shadow-indigo-500/35 ring-1 ring-white/30"
+            >
               Feedback Explorer
             </Button>
           </Link>
@@ -272,12 +281,12 @@ export const OverviewPage: React.FC = () => {
 
       {/* Global Error Alert */}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-center justify-between gap-3 text-xs text-red-900 animate-in fade-in">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+        <div className="rounded-2xl border border-red-200/50 bg-red-950/60 p-5 flex items-center justify-between gap-4 text-sm text-red-100 animate-in fade-in shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-6 w-6 text-red-400 shrink-0" />
             <div>
-              <p className="font-semibold text-red-950">Error Loading Dashboard Analytics</p>
-              <p className="text-red-800 mt-0.5">{error}</p>
+              <p className="font-bold text-base text-white">Error Loading Dashboard Analytics</p>
+              <p className="text-red-200/90 text-sm mt-0.5">{error}</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={loadData}>
@@ -288,24 +297,24 @@ export const OverviewPage: React.FC = () => {
 
       {/* Empty state: nothing ingested yet */}
       {metrics?.summary.isEmpty && !isLoading && (
-        <div className="flex flex-col gap-4 rounded-2xl bg-indigo-500/10 p-6 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
-              <Database className="h-5 w-5" />
+        <div className="flex flex-col gap-5 rounded-3xl border border-indigo-400/30 bg-gradient-to-r from-indigo-900/50 via-indigo-950/70 to-purple-950/50 p-7 shadow-2xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-950/50">
+              <Database className="h-6 w-6" />
             </span>
             <div>
-              <h3 className="font-semibold text-slate-900">No customer feedback ingested yet</h3>
-              <p className="mt-0.5 text-xs text-slate-600">
+              <h3 className="text-xl font-bold text-white">No customer feedback ingested yet</h3>
+              <p className="mt-1 text-base text-indigo-100/90">
                 Import a CSV of reviews or load the 20-row demo fixture to populate the charts and priority queue.
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSeedDemo} isLoading={isSeedingSample}>
+          <div className="flex shrink-0 items-center gap-3">
+            <Button variant="outline" size="md" onClick={handleSeedDemo} isLoading={isSeedingSample} className="text-base font-semibold">
               Load 20 demo rows
             </Button>
             <Link to="/feedback">
-              <Button variant="primary" size="sm" leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}>
+              <Button variant="primary" size="md" leftIcon={<FileSpreadsheet className="h-4 w-4" />} className="cta-focus-glow text-base font-bold px-5">
                 Ingest CSV
               </Button>
             </Link>
@@ -314,18 +323,18 @@ export const OverviewPage: React.FC = () => {
       )}
 
       {/* 1. KPI Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* KPI 1: Total Feedback Records */}
         <Card className="kpi-tile">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between text-sm font-bold text-indigo-200 tracking-wide">
               <span>Total Feedback</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-400/30"><Database className="h-5 w-5" /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/25 text-indigo-200 ring-1 ring-indigo-400/40"><Database className="h-6 w-6" /></span>
             </div>
-            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
+            <div className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-white">
               {metrics ? <StatsCounter value={metrics.summary.totalFeedback} /> : '0'}
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
               {datasetStatus?.activeDatasetType === 'genuine' ? (
                 <Badge variant="indigo" size="sm" dot>
                   Genuine CSV Dataset
@@ -347,18 +356,18 @@ export const OverviewPage: React.FC = () => {
 
         {/* KPI 2: Analyzed Feedback */}
         <Card className="kpi-tile">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between text-sm font-bold text-indigo-200 tracking-wide">
               <span>AI Analyzed Volume</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/30"><Sparkles className="h-5 w-5" /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/25 text-emerald-300 ring-1 ring-emerald-400/40"><Sparkles className="h-6 w-6" /></span>
             </div>
-            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
+            <div className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-white">
               {metrics ? <StatsCounter value={metrics.summary.analyzedFeedback} /> : '0'}
             </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
               {metrics && metrics.summary.totalFeedback > 0 ? (
                 <>
-                  <span className="font-semibold text-slate-700">
+                  <span className="font-bold text-emerald-300">
                     {metrics.summary.analysisCoveragePercent}%
                   </span>
                   <span>coverage ({metrics.summary.pendingAnalysis} pending)</span>
@@ -372,24 +381,24 @@ export const OverviewPage: React.FC = () => {
 
         {/* KPI 3: Negative Feedback */}
         <Card className="kpi-tile">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between text-sm font-bold text-indigo-200 tracking-wide">
               <span>Negative Friction</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/30"><AlertTriangle className="h-5 w-5" /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/25 text-rose-300 ring-1 ring-rose-400/40"><AlertTriangle className="h-6 w-6" /></span>
             </div>
-            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
+            <div className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-white">
               {metrics && metrics.sentiment.denominator > 0 ? (
                 <span className="inline-flex items-center">
                   <StatsCounter value={metrics.sentiment.counts.negative} />
-                  <span className="text-sm font-semibold text-rose-600 ml-1.5 inline-flex items-center">
+                  <span className="text-base font-bold text-rose-400 ml-2 inline-flex items-center">
                     (<StatsCounter value={metrics.sentiment.percentages.negative} suffix="%" decimals={1} />)
                   </span>
                 </span>
               ) : (
-                <span className="text-slate-400 text-xl">Awaiting Run</span>
+                <span className="text-slate-400 text-xl font-bold">Awaiting Run</span>
               )}
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="mt-2 flex items-center gap-1.5 text-sm text-slate-300">
               {metrics && metrics.sentiment.denominator > 0 ? (
                 <span>Denominator: {metrics.sentiment.denominator.toLocaleString()} analyzed</span>
               ) : (
@@ -401,13 +410,13 @@ export const OverviewPage: React.FC = () => {
 
         {/* KPI 4: Open Priority Issues */}
         <Card className="kpi-tile">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between text-sm font-bold text-indigo-200 tracking-wide">
               <span>Triage Queue</span>
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/30"><Layers className="h-5 w-5" /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-500/25 text-violet-300 ring-1 ring-violet-400/40"><Layers className="h-6 w-6" /></span>
             </div>
-            <div className="mt-2 text-3xl font-extrabold tracking-tight text-white">
-              <Link to="/actions" className="hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5">
+            <div className="mt-3 text-3xl sm:text-4xl font-black tracking-tight text-white">
+              <Link to="/actions" className="hover:text-indigo-300 transition-colors inline-flex items-center gap-2">
                 {metrics ? (
                   <>
                     <StatsCounter value={metrics.priorityRankings.openIssuesCount !== undefined ? metrics.priorityRankings.openIssuesCount : metrics.priorityRankings.issues.length} />
@@ -418,7 +427,7 @@ export const OverviewPage: React.FC = () => {
                 )}
               </Link>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="mt-2 flex items-center gap-2 text-sm text-slate-300">
               {metrics && metrics.priorityRankings.tierSummary.critical > 0 ? (
                 <Badge variant="danger" size="sm">
                   {metrics.priorityRankings.tierSummary.critical} Critical
@@ -447,11 +456,11 @@ export const OverviewPage: React.FC = () => {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-lg sm:text-xl font-bold text-white">
                   Sentiment Distribution
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Select a slice to filter the feed.
+                <CardDescription className="text-sm text-indigo-100/80">
+                  Select a slice to filter the feedback feed.
                 </CardDescription>
               </div>
               <Badge variant="neutral" size="sm">
@@ -569,11 +578,11 @@ export const OverviewPage: React.FC = () => {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-lg sm:text-xl font-bold text-white">
                   Feedback Category Breakdown
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Select a bar to explore.
+                <CardDescription className="text-sm text-indigo-100/80">
+                  Select a category bar to filter related customer reviews.
                 </CardDescription>
               </div>
               <Badge variant="indigo" size="sm">
@@ -694,14 +703,14 @@ export const OverviewPage: React.FC = () => {
           <CardHeader className="pb-3 border-b border-slate-100">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-lg font-bold text-slate-900">
                   Top Issue Topics
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Most cited by customers.
+                <CardDescription className="text-sm text-slate-500">
+                  Most cited by customers across all feedback sources.
                 </CardDescription>
               </div>
-              <Badge variant="neutral" size="sm">
+              <Badge variant="neutral" size="sm" className="text-xs font-semibold">
                 Ranked by Mentions
               </Badge>
             </div>
@@ -713,20 +722,20 @@ export const OverviewPage: React.FC = () => {
                 {metrics.issueFrequencies.slice(0, 5).map((item, index) => (
                   <div
                     key={item.topic}
-                    className="p-4 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3"
+                    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3"
                   >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 font-mono">
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 font-mono">
                           {index + 1}
                         </span>
-                        <h4 className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                        <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                           {item.topic}
                         </h4>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 pl-7">
-                        <span className="font-semibold text-slate-800">
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-600 pl-8">
+                        <span className="font-bold text-slate-900">
                           {item.count} mentions
                         </span>
                         <span>•</span>
@@ -734,7 +743,7 @@ export const OverviewPage: React.FC = () => {
                         {item.negativePercentage > 0 && (
                           <>
                             <span>•</span>
-                            <span className="text-rose-600 font-medium">
+                            <span className="text-rose-600 font-semibold">
                               {item.negativePercentage}% negative
                             </span>
                           </>
@@ -742,7 +751,7 @@ export const OverviewPage: React.FC = () => {
                         {item.averageSeverity && (
                           <>
                             <span>•</span>
-                            <span>Sev {item.averageSeverity}/5</span>
+                            <span className="font-medium text-slate-700">Sev {item.averageSeverity}/5</span>
                           </>
                         )}
                       </div>
@@ -751,19 +760,19 @@ export const OverviewPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`/feedback?topic=${encodeURIComponent(item.topic)}`)}
-                      className="shrink-0 p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                      className="shrink-0 p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                       title="Filter feed by this topic"
                     >
-                      <ArrowUpRight className="h-4 w-4" />
+                      <ArrowUpRight className="h-5 w-5" />
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="p-8 text-center">
-                <AlertCircle className="h-6 w-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">No Issue Topics Extracted Yet</p>
-                <p className="text-[11px] text-slate-400 max-w-xs mx-auto mt-1">
+                <AlertCircle className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-700">No Issue Topics Extracted Yet</p>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
                   Run batch analysis to extract grounded primary topics from customer feedback.
                 </p>
               </div>
@@ -776,11 +785,11 @@ export const OverviewPage: React.FC = () => {
           <CardHeader className="pb-3 border-b border-slate-100">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-lg font-bold text-slate-900">
                   Priority Triage Queue
                 </CardTitle>
-                <CardDescription className="text-xs">
-                  Highest priority first.
+                <CardDescription className="text-sm text-slate-500">
+                  Highest priority first based on severity and volume.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-3">
@@ -794,37 +803,39 @@ export const OverviewPage: React.FC = () => {
                 {metrics.priorityRankings.issues.slice(0, 5).map((issue) => (
                   <div
                     key={issue.issueId}
-                    className="p-4 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3"
+                    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3"
                   >
                     <div className="space-y-1.5 min-w-0">
                       <div className="flex items-center gap-2">
                         <Badge
                           variant={TIER_BADGE_VARIANTS[issue.priorityTier.toLowerCase()] || 'neutral'}
                           size="sm"
+                          className="font-bold text-xs"
                         >
                           {issue.priorityTier.toUpperCase()}
                         </Badge>
-                        <span className="font-mono text-xs text-slate-400">
+                        <span className="font-mono text-xs text-slate-500 font-semibold">
                           {issue.issueCode}
                         </span>
-                        <h4 className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+                        <h4 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                           {issue.title}
                         </h4>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-slate-600">
                         <Badge
                           variant={CATEGORY_BADGE_VARIANTS[issue.category] || 'neutral'}
                           size="sm"
+                          className="text-xs"
                         >
                           {issue.category}
                         </Badge>
                         <span>•</span>
-                        <span>{issue.totalMentions} mentions</span>
+                        <span className="font-semibold text-slate-800">{issue.totalMentions} mentions</span>
                         <span>•</span>
                         <span>{issue.uniqueReports} unique</span>
                         {issue.duplicateRatio > 0 && (
-                          <span className="text-amber-600 font-medium">
+                          <span className="text-amber-600 font-semibold">
                             ({issue.duplicateRatio}% dupes)
                           </span>
                         )}
@@ -834,12 +845,12 @@ export const OverviewPage: React.FC = () => {
                     {/* Priority Score Gauge */}
                     <div className="shrink-0 text-right">
                       <div className="flex items-center gap-1.5 justify-end">
-                        <span className="text-lg font-bold font-mono text-slate-900">
+                        <span className="text-xl font-black font-mono text-slate-900">
                           {issue.priorityScore.toFixed(1)}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-mono">/100</span>
+                        <span className="text-xs text-slate-500 font-mono font-medium">/100</span>
                       </div>
-                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+                      <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden mt-1.5">
                         <div
                           className={`h-full rounded-full ${
                             issue.priorityTier === 'critical'
@@ -859,17 +870,17 @@ export const OverviewPage: React.FC = () => {
               </div>
             ) : (
               <div className="p-8 text-center">
-                <Layers className="h-6 w-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">No Priority Issues Generated</p>
-                <p className="text-[11px] text-slate-400 max-w-xs mx-auto mt-1">
+                <Layers className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-700">No Priority Issues Generated</p>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
                   Run issue clustering in the AI Insights page to populate deterministic triage queues.
                 </p>
               </div>
             )}
 
             {/* Non-financial risk disclaimer */}
-            <div className="p-3 bg-slate-50/70 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
-              <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <div className="p-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
+              <Info className="h-4 w-4 text-slate-400 shrink-0" />
               <span>{metrics?.priorityRankings.disclaimer || 'Deterministic Priority = 100 × (0.40F + 0.35S + 0.25N). Scores represent triage urgency, not financial risk.'}</span>
             </div>
           </CardContent>

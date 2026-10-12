@@ -272,24 +272,25 @@ export const AdaptionPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-              <span>Adaption Labs</span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+              <span>Adaption</span>
+              <span className="text-indigo-600">Labs</span>
             </h2>
-            <Badge variant="indigo" size="sm" className="font-mono">
+            <Badge variant="indigo" size="md" className="font-mono text-xs font-bold">
               <StatsCounter value={runs.length} /> Evaluations
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-base text-slate-500 mt-1">
             Transform customer feedback into instruction datasets, evaluate alignment, and inject validated exemplars into downstream AI.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={() => {
               fetchStatus();
               fetchRuns();
@@ -298,17 +299,19 @@ export const AdaptionPage: React.FC = () => {
             }}
             isLoading={isLoading}
             leftIcon={<RotateCw className="h-4 w-4" />}
+            className="font-medium text-sm"
           >
             Refresh
           </Button>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => {
               handleRequestEstimate();
               setIsModalOpen(true);
             }}
             leftIcon={<Play className="h-4 w-4" />}
+            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
           >
             Run Adaption Workflow
           </Button>

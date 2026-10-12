@@ -188,20 +188,24 @@ export const ActionCenterPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             <span>Action</span>
-            <span className="text-indigo-300">Center</span>
+            <span className="text-indigo-600">Center</span>
           </h2>
-                  </div>
-        <div className="flex items-center gap-2.5">
+          <p className="text-base text-slate-500 mt-1">
+            Track triage status, assign action items, and manage customer issue lifecycles.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             leftIcon={<RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />}
             onClick={fetchIssues}
             disabled={isLoading}
+            className="font-medium text-sm"
           >
             Refresh Queue
           </Button>
@@ -209,7 +213,7 @@ export const ActionCenterPage: React.FC = () => {
       </div>
 
       {/* Filter Tabs & Status Overview */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3 overflow-x-auto">
         {[
           { label: 'Open Issues', value: 'open', count: statusSummary.open },
           { label: 'In Progress', value: 'in_progress', count: statusSummary.in_progress },
@@ -221,18 +225,18 @@ export const ActionCenterPage: React.FC = () => {
           <button
             key={tab.value}
             onClick={() => setStatusFilter(tab.value)}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-2.5 rounded-xl px-4 py-2 text-sm font-bold transition-all shrink-0 cursor-pointer ${
               statusFilter === tab.value
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span>{tab.label}</span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
+              className={`rounded-full px-2.5 py-0.5 text-xs font-mono font-bold ${
                 statusFilter === tab.value
                   ? 'bg-white/20 text-white'
-                  : 'bg-slate-200 text-slate-600'
+                  : 'bg-slate-200 text-slate-700'
               }`}
             >
               <StatsCounter value={tab.count} />

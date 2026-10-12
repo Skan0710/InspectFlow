@@ -33,11 +33,11 @@ export const ProductStorySection: React.FC = () => (
   <section aria-labelledby="how-it-works" className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-900/60 via-indigo-950/80 to-violet-950/70 p-6 shadow-xl shadow-black/20 sm:p-8">
     <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl" />
     <div className="relative">
-      <h2 id="how-it-works" className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      <h2 id="how-it-works" className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
         From raw reviews to ranked actions
       </h2>
-      <p className="mt-1 max-w-xl text-sm text-indigo-100">
-        Five steps, every number traceable to a real feedback record.
+      <p className="mt-2 max-w-2xl text-base sm:text-lg text-indigo-100/90 leading-relaxed">
+        Five streamlined stages, every decision traceable to real customer feedback.
       </p>
     </div>
     <div className="relative mt-4 h-[440px] w-full sm:h-[500px]">

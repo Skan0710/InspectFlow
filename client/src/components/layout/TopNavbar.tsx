@@ -57,13 +57,13 @@ export const TopNavbar: React.FC = () => {
       <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           to="/"
-          className="flex shrink-0 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+          className="flex shrink-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
           aria-label="InsightFlow home"
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-lg shadow-indigo-950/40">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-lg shadow-indigo-950/40">
             <Sparkles className="h-5 w-5" />
           </span>
-          <span className="text-base font-bold tracking-tight text-white">InsightFlow</span>
+          <span className="text-xl font-extrabold tracking-tight text-white">InsightFlow</span>
         </Link>
 
         <div className="hidden flex-1 justify-center lg:flex">
@@ -72,7 +72,11 @@ export const TopNavbar: React.FC = () => {
 
         <div className="flex items-center gap-2">
           {!signedIn && status === 'guest' && (
-            <Button size="md" onClick={() => openSignIn()}>
+            <Button
+              size="md"
+              onClick={() => openSignIn()}
+              className="cta-focus-glow px-5 py-2 text-base font-bold shadow-lg shadow-indigo-500/30 ring-1 ring-white/30"
+            >
               Sign in
             </Button>
           )}

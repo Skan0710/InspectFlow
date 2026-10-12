@@ -174,20 +174,52 @@ html.lenis body {
 }
 
 /* ---- Calm layer: content floats on the one background ---- */
-.app-theme { font-size: 1rem; }
-.app-theme .text-xs { font-size: 0.875rem; line-height: 1.375rem; }
-.app-theme .text-sm { font-size: 1rem; line-height: 1.5rem; }
-.app-theme .text-\[10px\], .app-theme .text-\[11px\] { font-size: 0.8125rem; }
-/* No tiny shouting labels or monospace metadata */
-.app-theme .uppercase { text-transform: none; }
-.app-theme .tracking-wider, .app-theme .tracking-widest, .app-theme .tracking-wide { letter-spacing: 0.005em; }
-.app-theme .font-mono { font-family: inherit; }
-/* Page titles: one clear size */
+.app-theme {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+}
+.app-theme .text-xs { font-size: 0.9375rem; line-height: 1.45rem; }
+.app-theme .text-sm { font-size: 1.0625rem; line-height: 1.6rem; }
+.app-theme .text-\[10px\], .app-theme .text-\[11px\] { font-size: 0.875rem; line-height: 1.35rem; }
+.app-theme .text-base { font-size: 1.125rem; line-height: 1.7rem; }
+.app-theme .text-lg { font-size: 1.25rem; line-height: 1.75rem; }
+.app-theme .text-xl { font-size: 1.375rem; line-height: 1.85rem; }
+
+/* Readable typography and crisp tracking */
+.app-theme .uppercase { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8125rem; }
+.app-theme .tracking-wider, .app-theme .tracking-widest, .app-theme .tracking-wide { letter-spacing: 0.025em; }
+
+/* Page titles: bold, commanding presence */
 .app-theme .page-header h1,
 .app-theme .page-header h2 {
-  font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.5rem);
+  font-size: clamp(2rem, 1.4rem + 2vw, 2.75rem);
+  font-weight: 800;
   line-height: 1.15;
+  letter-spacing: -0.025em;
 }
-/* Hairlines under headers are enough; drop the heavier rule */
-.app-theme .page-header::after { background: linear-gradient(90deg, rgba(165, 180, 252, 0.25), transparent 70%); }
-.app-theme .kpi-tile:hover { border-color: transparent; }
+
+/* Hairlines under headers are enough */
+.app-theme .page-header::after { background: linear-gradient(90deg, rgba(165, 180, 252, 0.35), transparent 70%); }
+.app-theme .kpi-tile:hover { border-color: rgba(165, 180, 252, 0.45); }
+
+/* High-emphasis CTA Glow & Pulse */
+.cta-focus-glow {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cta-focus-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.8), rgba(192, 132, 252, 0.8));
+  z-index: -1;
+  opacity: 0.6;
+  filter: blur(8px);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+.cta-focus-glow:hover::before {
+  opacity: 1;
+  filter: blur(14px);
+}

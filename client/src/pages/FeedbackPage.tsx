@@ -283,58 +283,66 @@ export const FeedbackPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Feedback
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+            Customer Feedback
           </h2>
-                  </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+          <p className="text-base text-slate-500 mt-1">
+            Browse, filter, and inspect incoming sentiment and customer feedback streams.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={handleSeedSample}
             isLoading={isSeedingSample}
             leftIcon={<FlaskConical className="h-4 w-4 text-amber-600" />}
             title="Load small 20-row sample dataset for rapid local testing"
+            className="font-medium text-sm"
           >
             Load 20 Demo Rows
           </Button>
 
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={fetchFeedback}
             isLoading={isLoading}
             leftIcon={<RefreshCw className="h-4 w-4" />}
+            className="font-medium text-sm"
           >
             Refresh Feed
           </Button>
 
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={handleExportCsv}
             leftIcon={<Download className="h-4 w-4" />}
             title="Export filtered feedback records as CSV"
+            className="font-medium text-sm"
           >
             Export CSV
           </Button>
 
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             onClick={() => setIsManualModalOpen(true)}
             leftIcon={<MessageSquarePlus className="h-4 w-4 text-indigo-600" />}
+            className="font-semibold text-sm"
           >
             Submit Feedback
           </Button>
 
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => setIsImportModalOpen(true)}
-            leftIcon={<Upload className="h-4 w-4" />}
+            leftIcon={<Upload className="h-5 w-5" />}
+            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
           >
             Ingest Feedback CSV
           </Button>

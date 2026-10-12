@@ -406,87 +406,93 @@ export const InsightsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-2 page-header">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-3 page-header">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             <span>AI</span>
-            <span className="text-indigo-300">Insights</span>
+            <span className="text-indigo-600">Insights & Recommendations</span>
           </h2>
-                  </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+          <p className="text-base text-slate-500 mt-1">
+            Semantic issue clustering, deterministic triage rankings, and AI-driven solutions.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
           <Button 
             variant="outline" 
-            size="sm" 
+            size="md" 
             leftIcon={<Calculator className={`h-4 w-4 ${isRecalculating ? 'animate-spin' : ''}`} />}
             onClick={handleRecalculateScores}
             disabled={isRecalculating || isClustering}
+            className="font-medium text-sm"
           >
             {isRecalculating ? 'Recalculating...' : 'Recalculate Scores'}
           </Button>
           <Button 
             variant="outline" 
-            size="sm" 
+            size="md" 
             leftIcon={<RotateCw className={`h-4 w-4 ${isClustering ? 'animate-spin' : ''}`} />}
             onClick={handleRunClustering}
             disabled={isClustering || isRecalculating}
+            className="font-medium text-sm"
           >
             {isClustering ? 'Clustering...' : 'Re-run Clustering'}
           </Button>
           <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Sparkles className={`h-4 w-4 text-indigo-600 ${isBatchGenerating ? 'animate-spin' : ''}`} />}
+            variant="primary"
+            size="md"
+            leftIcon={<Sparkles className={`h-4 w-4 ${isBatchGenerating ? 'animate-spin' : ''}`} />}
             onClick={handleGenerateAllHighPriority}
             disabled={isBatchGenerating || isClustering || isRecalculating}
+            className="cta-focus-glow font-bold text-base shadow-lg shadow-indigo-500/25 px-5"
           >
-            {isBatchGenerating ? 'Generating Recs...' : 'Generate High-Priority Recommendations'}
+            {isBatchGenerating ? 'Generating Recs...' : 'Generate Recommendations'}
           </Button>
         </div>
       </div>
 
       {/* Stats Summary Bar */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
               <Sparkles className="h-4 w-4 text-indigo-600" />
               <span>Issue Clusters</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="mt-2 text-3xl font-black text-slate-900">
               <StatsCounter value={stats.totalClusters} />
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Semantically distinct topics</div>
+            <div className="text-xs text-slate-500 mt-1 font-medium">Semantically distinct topics</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
               <Layers className="h-4 w-4 text-emerald-600" />
-              <span>Total Feedback Volume</span>
+              <span>Total Volume</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="mt-2 text-3xl font-black text-slate-900">
               <StatsCounter value={stats.totalFeedbackClustered} />
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Reviews assigned to clusters</div>
+            <div className="text-xs text-slate-500 mt-1 font-medium">Reviews assigned to clusters</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
               <Hash className="h-4 w-4 text-blue-600" />
               <span>Unique Inquiries</span>
             </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="mt-2 text-3xl font-black text-slate-900">
               <StatsCounter value={stats.uniqueTextsCount} />
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Deduplicated reports (exposing repeats)</div>
+            <div className="text-xs text-slate-500 mt-1 font-medium">Deduplicated customer reports</div>
           </div>
           <div 
-            className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs cursor-pointer hover:border-slate-300 transition-colors"
+            className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all"
             onClick={handleLoadUnmatched}
           >
-            <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-600">
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-4 w-4 text-amber-500" />
                 <span>Unmatched Outliers</span>
               </div>
-              <span className="text-[11px] text-indigo-600 hover:underline">
+              <span className="text-xs text-indigo-600 font-bold hover:underline">
                 {showUnmatched ? 'Hide' : 'View'}
               </span>
             </div>

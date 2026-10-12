@@ -72,9 +72,9 @@ export function SpotlightNavbar({ items, activeIndex, className = '' }: Spotligh
     <nav
       ref={navRef}
       aria-label="Primary"
-      className={`relative h-11 overflow-hidden rounded-full border border-white/20 bg-white/10 shadow-lg shadow-indigo-950/30 backdrop-blur-md ${className}`}
+      className={`relative h-12 overflow-hidden rounded-full border border-white/25 bg-white/10 shadow-xl shadow-indigo-950/40 backdrop-blur-md ${className}`}
     >
-      <ul className="relative z-10 flex h-full items-center gap-0.5 px-1.5">
+      <ul className="relative z-10 flex h-full items-center gap-1 px-2">
         {items.map((item, idx) => {
           const active = idx === activeIndex;
           return (
@@ -83,8 +83,8 @@ export function SpotlightNavbar({ items, activeIndex, className = '' }: Spotligh
                 to={item.href}
                 data-index={idx}
                 aria-current={active ? 'page' : undefined}
-                className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 ${
-                  active ? 'bg-white/15 text-white' : 'text-white/90 hover:text-white'
+                className={`rounded-full px-4 py-2 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 ${
+                  active ? 'bg-white/20 text-white shadow-sm' : 'text-white/90 hover:text-white'
                 }`}
               >
                 {item.label}
