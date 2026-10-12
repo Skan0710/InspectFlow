@@ -31,7 +31,9 @@ import { fetchAnalyticsMetrics, fetchDatasetStatus, seedSampleDataset } from '..
 import type { AnalyticsMetricsResponse, DatasetStatus } from '../types/analytics';
 import { gsap, useGsapContext, prefersReducedMotion } from '../lib/animations/gsap';
 import { ProductStorySection } from '../components/landing/ProductStorySection';
+import { WorkflowFeatureBento } from '../components/landing/WorkflowFeatureBento';
 import { ShaderGradientBackground } from '../components/canvas/ShaderGradientBackground';
+import { BorderBeam } from '../components/ui/BorderBeam';
 
 const SENTIMENT_COLORS = {
   positive: '#10b981', // Emerald
@@ -211,6 +213,7 @@ export const OverviewPage: React.FC = () => {
       {/* High-Visibility AI Intelligence Atmosphere Banner with ShaderGradient */}
       <div className="overview-hero-surface relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-7 text-white shadow-xl">
         <ShaderGradientBackground className="absolute inset-0 pointer-events-none" />
+        <BorderBeam size={240} duration={14} borderWidth={1.5} colorFrom="#6366f1" colorTo="#a855f7" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3 py-0.5 text-xs font-medium text-indigo-300">
@@ -1009,6 +1012,9 @@ export const OverviewPage: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* 21st.dev & Mintlify Inspired Architectural Workflow Bento */}
+      <WorkflowFeatureBento />
 
       {/* End-to-End Product Storytelling Journey Section */}
       <ProductStorySection />

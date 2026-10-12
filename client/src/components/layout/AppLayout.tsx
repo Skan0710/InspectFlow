@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopNavbar } from './TopNavbar';
+import { ProductFooter } from './ProductFooter';
 
 export const AppLayout: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -30,6 +31,7 @@ export const AppLayout: React.FC = () => {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
+        <ProductFooter />
       </div>
     </div>
   );
